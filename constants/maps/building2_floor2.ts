@@ -2,15 +2,15 @@
 
 export const ROOMS = [
   // Ліве крило
-  { id: '21', label: '21', building: 2, floor: 2, x: 45, y: 375, width: 935, height: 440 },
-  { id: '22', label: '22', building: 2, floor: 2, x: 45, y: 860, width: 935, height: 515 },
+  { id: '21', label: 'Кабінет 21', building: 2, floor: 2, x: 45, y: 375, width: 935, height: 440 },
+  { id: '22', label: 'Кабінет 22', building: 2, floor: 2, x: 45, y: 860, width: 935, height: 515 },
   
   // Центральна частина
-  { id: '23', label: '23', building: 2, floor: 2, x: 1530, y: 879, width: 910, height: 495 },
+  { id: '23', label: 'Кабінет 23', building: 2, floor: 2, x: 1530, y: 879, width: 910, height: 495 },
   
   // Праве крило
-  { id: '25', label: '25', building: 2, floor: 2, x: 2740, y: 370, width: 965, height: 490 },
-  { id: '24', label: '24', building: 2, floor: 2, x: 2740, y: 902, width: 965, height: 474 },
+  { id: '25', label: 'Кабінет 25', building: 2, floor: 2, x: 2740, y: 370, width: 965, height: 490 },
+  { id: '24', label: 'Кабінет 24', building: 2, floor: 2, x: 2740, y: 902, width: 965, height: 474 },
 ];
 
 // Точка старту ("ВИ ТУТ") — Верхні сходи (Вхід)
@@ -48,22 +48,20 @@ export const NODES = [
 ];
 
 export const EDGES = [
-  // Вертикаль лівого крила (від сходів вниз)
+  
+  // центр / 21, 22, 23
   { from: 'kiosk', to: 'c_drop_21' },
   { from: 'c_drop_21', to: 'c_cross_main' },
   { from: 'c_cross_main', to: 'c_drop_22' },
-
-  // Горизонталь
   { from: 'c_cross_main', to: 'c_mid_23' },
-  { from: 'c_cross_main', to: 'c_cross_right' },
 
-  // Вертикаль правого крила
+  // праве крило / 24, 25
+  { from: 'c_cross_main', to: 'c_cross_right' },
   { from: 'c_cross_right', to: 'c_down_24' },
 
-  // Заходи в кабінети (останній ривок прямо всередину під кутом 90 град)
+  // Заходи в кабінети 
   { from: 'c_drop_21', to: '21' },
   { from: 'c_drop_22', to: '22' },
-  //{ from: 'c_drop_22', to: '23' },
   { from: 'c_mid_23', to: '23' },
   { from: 'c_cross_right', to: '25' },
   { from: 'c_down_24', to: '24' },

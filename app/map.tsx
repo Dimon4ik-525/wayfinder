@@ -1,10 +1,12 @@
 import { useLocalSearchParams } from 'expo-router';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox } from 'react-native';
 import { useState, useEffect } from 'react';
-import Svg, { Rect, Path, Circle, Text as SvgText, G } from 'react-native-svg';
 import { Colors } from '../constants/theme';
 
-// Приховуємо набридливі попередження від SVG у браузері
+// Імпортуємо наш компонент-малювальник
+import MapCanvas from '../components/MapCanvas';
+
+// Приховуємо спливаючі попередження на екрані
 LogBox.ignoreLogs([
   'Unknown event handler property `onStartShouldSetResponder`',
   'Unknown event handler property `onResponderTerminationRequest`',
@@ -14,24 +16,33 @@ LogBox.ignoreLogs([
   'Unknown event handler property `onResponderTerminate`',
 ]);
 
+// ГЛУШНИК ДЛЯ КОНСОЛІ БРАУЗЕРА (щоб там було чисто)
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('Unknown event handler property')) {
+    return; 
+  }
+  originalConsoleError(...args);
+};
+
 import { findShortestPath } from '../utils/navigation';
 
+// Корпус 1, Поверх 1
 import { 
-  ROOMS as B1_F1_ROOMS, 
-  KIOSK_POSITION as B1_F1_KIOSK, 
-  VIEW_BOX as B1_F1_VIEWBOX, 
-  WALLS_PATH as B1_F1_WALLS,
-  NODES as B1_F1_NODES,
-  EDGES as B1_F1_EDGES
+  ROOMS as B1_F1_ROOMS, KIOSK_POSITION as B1_F1_KIOSK, VIEW_BOX as B1_F1_VIEWBOX, 
+  WALLS_PATH as B1_F1_WALLS, NODES as B1_F1_NODES, EDGES as B1_F1_EDGES
 } from '../constants/maps/building1_floor1';
 
+// Корпус 1, Поверх 3
 import { 
-  ROOMS as B2_F2_ROOMS, 
-  KIOSK_POSITION as B2_F2_KIOSK, 
-  VIEW_BOX as B2_F2_VIEWBOX, 
-  WALLS_PATH as B2_F2_WALLS,
-  NODES as B2_F2_NODES,
-  EDGES as B2_F2_EDGES
+  ROOMS as B1_F3_ROOMS, KIOSK_POSITION as B1_F3_KIOSK, VIEW_BOX as B1_F3_VIEWBOX, 
+  WALLS_PATH as B1_F3_WALLS, NODES as B1_F3_NODES, EDGES as B1_F3_EDGES
+} from '../constants/maps/building1_floor3';
+
+// Корпус 2, Поверх 2
+import { 
+  ROOMS as B2_F2_ROOMS, KIOSK_POSITION as B2_F2_KIOSK, VIEW_BOX as B2_F2_VIEWBOX, 
+  WALLS_PATH as B2_F2_WALLS, NODES as B2_F2_NODES, EDGES as B2_F2_EDGES
 } from '../constants/maps/building2_floor2';
 
 export default function MapScreen() {
@@ -64,37 +75,28 @@ export default function MapScreen() {
   let currentEdges: any[] = [];
 
   if (activeBuilding === 1 && activeFloor === 1) {
-    currentRooms = B1_F1_ROOMS;
-    currentKiosk = B1_F1_KIOSK;
-    currentViewBox = B1_F1_VIEWBOX;
-    currentWallsPath = B1_F1_WALLS;
-    currentNodes = B1_F1_NODES;
-    currentEdges = B1_F1_EDGES;
+    currentRooms = B1_F1_ROOMS; currentKiosk = B1_F1_KIOSK; currentViewBox = B1_F1_VIEWBOX;
+    currentWallsPath = B1_F1_WALLS; currentNodes = B1_F1_NODES; currentEdges = B1_F1_EDGES;
+  } else if (activeBuilding === 1 && activeFloor === 3) {
+    currentRooms = B1_F3_ROOMS; currentKiosk = B1_F3_KIOSK; currentViewBox = B1_F3_VIEWBOX;
+    currentWallsPath = B1_F3_WALLS; currentNodes = B1_F3_NODES; currentEdges = B1_F3_EDGES;
   } else if (activeBuilding === 2 && activeFloor === 2) {
-    currentRooms = B2_F2_ROOMS;
-    currentKiosk = B2_F2_KIOSK;
-    currentViewBox = B2_F2_VIEWBOX;
-    currentWallsPath = B2_F2_WALLS;
-    currentNodes = B2_F2_NODES;
-    currentEdges = B2_F2_EDGES;
+    currentRooms = B2_F2_ROOMS; currentKiosk = B2_F2_KIOSK; currentViewBox = B2_F2_VIEWBOX;
+    currentWallsPath = B2_F2_WALLS; currentNodes = B2_F2_NODES; currentEdges = B2_F2_EDGES;
   }
 
-  // ФУНКЦІЯ МАРШРУТУ (Алгоритм Дейкстри)
+  // Обчислення маршруту
   const generateRoutePath = () => {
     if (!targetRoomId || currentNodes.length === 0) return '';
-    
     const room = currentRooms.find(r => r.id === targetRoomId);
     if (!room) return '';
-
     const pathNodes = findShortestPath('kiosk', targetRoomId, currentNodes, currentEdges);
-    
     if (pathNodes.length === 0) return '';
 
     let pathString = `M ${pathNodes[0].x} ${pathNodes[0].y} `;
     for (let i = 1; i < pathNodes.length; i++) {
       pathString += `L ${pathNodes[i].x} ${pathNodes[i].y} `;
     }
-
     return pathString;
   };
 
@@ -164,65 +166,15 @@ export default function MapScreen() {
 
       {/* КАРТА */}
       <View style={styles.mapArea}>
-        {currentRooms.length === 0 ? (
-          <Text style={{ fontSize: 24, color: Colors.textSecondary }}>
-            Мапа для Корпусу {activeBuilding}, Поверху {activeFloor} ще в розробці...
-          </Text>
-        ) : (
-          <Svg width="100%" height="100%" viewBox={currentViewBox}>
-            
-            {/* Креслення стін (БЕЗ currentWallsTransform) */}
-            {currentWallsPath !== "" && (
-              <Path 
-                d={currentWallsPath} 
-                stroke="#9CA3AF" 
-                strokeWidth="6" 
-                fill="none" 
-              />
-            )}
-
-            {/* КАБІНЕТИ */}
-            {currentRooms.map((room) => {
-              const isActive = room.id === targetRoomId;
-              return (
-                <G key={room.id} onPress={() => setTargetRoomId(room.id)}>
-                  <Rect 
-                    x={room.x} y={room.y} width={room.width} height={room.height} 
-                    fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 
-                    stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
-                  />
-                  <SvgText 
-                    x={room.x + (room.width / 2)} y={room.y + (room.height / 2) + 40} 
-                    fill={isActive ? Colors.white : Colors.textMain} 
-                    fontSize="160" fontWeight="bold" textAnchor="middle"
-                  >
-                    {room.label}
-                  </SvgText>
-                </G>
-              );
-            })}
-
-            {/* МАРШРУТ */}
-            {targetRoomId && (
-              <Path 
-                d={generateRoutePath()} 
-                stroke={Colors.primary} 
-                strokeWidth="24" 
-                strokeDasharray="40, 30" 
-                fill="none" 
-                strokeLinejoin="round"
-              />
-            )}
-
-            {/* ТОЧКА ВИ ТУТ */}
-            <G x={currentKiosk.x} y={currentKiosk.y}>
-              <Circle cx="0" cy="0" r="80" fill={Colors.error} opacity="0.2" />
-              <Circle cx="0" cy="0" r="30" fill={Colors.error} />
-              <SvgText x="0" y="140" fill={Colors.error} fontSize="60" fontWeight="bold" textAnchor="middle">ВИ ТУТ</SvgText>
-            </G>
-
-          </Svg>
-        )}
+        <MapCanvas 
+          rooms={currentRooms}
+          kioskPosition={currentKiosk}
+          viewBox={currentViewBox}
+          wallsPath={currentWallsPath}
+          targetRoomId={targetRoomId}
+          routePath={generateRoutePath()}
+          onRoomSelect={setTargetRoomId}
+        />
       </View>
     </View>
   );
