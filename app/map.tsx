@@ -27,23 +27,29 @@ console.error = (...args) => {
 
 import { findShortestPath } from '../utils/navigation';
 
-// Корпус 1, Поверх 1
+// --- КОРПУС 1 ---
 import { 
   ROOMS as B1_F1_ROOMS, KIOSK_POSITION as B1_F1_KIOSK, VIEW_BOX as B1_F1_VIEWBOX, 
   WALLS_PATH as B1_F1_WALLS, NODES as B1_F1_NODES, EDGES as B1_F1_EDGES
-} from '../constants/maps/building1_floor1';
+} from '../constants/maps/corp1/floor1'; // Зміни назву файлу, якщо вона у тебе інша (напр. building1_floor1)
 
-// Корпус 1, Поверх 3
+import { 
+  ROOMS as B1_F2_ROOMS, KIOSK_POSITION as B1_F2_KIOSK, VIEW_BOX as B1_F2_VIEWBOX, 
+  WALLS_PATH as B1_F2_WALLS, NODES as B1_F2_NODES, EDGES as B1_F2_EDGES 
+} from '../constants/maps/corp1/floor2'; // Зміни назву файлу, якщо вона у тебе інша
+
 import { 
   ROOMS as B1_F3_ROOMS, KIOSK_POSITION as B1_F3_KIOSK, VIEW_BOX as B1_F3_VIEWBOX, 
   WALLS_PATH as B1_F3_WALLS, NODES as B1_F3_NODES, EDGES as B1_F3_EDGES
-} from '../constants/maps/building1_floor3';
+} from '../constants/maps/corp1/floor3'; // Зміни назву файлу, якщо вона у тебе інша
 
-// Корпус 2, Поверх 2
+
+// --- КОРПУС 2 ---
 import { 
   ROOMS as B2_F2_ROOMS, KIOSK_POSITION as B2_F2_KIOSK, VIEW_BOX as B2_F2_VIEWBOX, 
   WALLS_PATH as B2_F2_WALLS, NODES as B2_F2_NODES, EDGES as B2_F2_EDGES
-} from '../constants/maps/building2_floor2';
+} from '../constants/maps/corp2/floor2'; // Зміни назву файлу, якщо вона у тебе інша
+
 
 export default function MapScreen() {
   const params = useLocalSearchParams();
@@ -77,6 +83,9 @@ export default function MapScreen() {
   if (activeBuilding === 1 && activeFloor === 1) {
     currentRooms = B1_F1_ROOMS; currentKiosk = B1_F1_KIOSK; currentViewBox = B1_F1_VIEWBOX;
     currentWallsPath = B1_F1_WALLS; currentNodes = B1_F1_NODES; currentEdges = B1_F1_EDGES;
+  } else if (activeBuilding === 1 && activeFloor === 2) {
+    currentRooms = B1_F2_ROOMS; currentKiosk = B1_F2_KIOSK; currentViewBox = B1_F2_VIEWBOX;
+    currentWallsPath = B1_F2_WALLS; currentNodes = B1_F2_NODES; currentEdges = B1_F2_EDGES;
   } else if (activeBuilding === 1 && activeFloor === 3) {
     currentRooms = B1_F3_ROOMS; currentKiosk = B1_F3_KIOSK; currentViewBox = B1_F3_VIEWBOX;
     currentWallsPath = B1_F3_WALLS; currentNodes = B1_F3_NODES; currentEdges = B1_F3_EDGES;
