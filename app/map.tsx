@@ -1,13 +1,21 @@
 import { useLocalSearchParams } from 'expo-router';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox } from 'react-native';
 import { useState, useEffect } from 'react';
 import Svg, { Rect, Path, Circle, Text as SvgText, G } from 'react-native-svg';
 import { Colors } from '../constants/theme';
 
-// 1. Імпортуємо наш алгоритм пошуку шляху
+// Приховуємо набридливі попередження від SVG у браузері
+LogBox.ignoreLogs([
+  'Unknown event handler property `onStartShouldSetResponder`',
+  'Unknown event handler property `onResponderTerminationRequest`',
+  'Unknown event handler property `onResponderGrant`',
+  'Unknown event handler property `onResponderMove`',
+  'Unknown event handler property `onResponderRelease`',
+  'Unknown event handler property `onResponderTerminate`',
+]);
+
 import { findShortestPath } from '../utils/navigation';
 
-// 2. Імпортуємо ДАНІ та ГРАФ з файлу конфігурації
 import { 
   ROOMS as B1_F1_ROOMS, 
   KIOSK_POSITION as B1_F1_KIOSK, 
@@ -17,6 +25,15 @@ import {
   EDGES as B1_F1_EDGES
 } from '../constants/maps/building1_floor1';
 
+import { 
+  ROOMS as B2_F2_ROOMS, 
+  KIOSK_POSITION as B2_F2_KIOSK, 
+  VIEW_BOX as B2_F2_VIEWBOX, 
+  WALLS_PATH as B2_F2_WALLS,
+  NODES as B2_F2_NODES,
+  EDGES as B2_F2_EDGES
+} from '../constants/maps/building2_floor2';
+
 export default function MapScreen() {
   const params = useLocalSearchParams();
   
@@ -25,7 +42,6 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [now, setNow] = useState(new Date());
   
-  // Якщо прийшли з розкладу - беремо номер кабінету, інакше null
   const [targetRoomId, setTargetRoomId] = useState<string | null>((params.room as string) || null);
 
   useEffect(() => {
@@ -39,7 +55,7 @@ export default function MapScreen() {
     return `📅 ${date.getDate()} ${months[date.getMonth()]}, ${days[date.getDay()]}`;
   };
 
-  // 3. Динамічний вибір даних
+  // Динамічний вибір даних
   let currentRooms: any[] = [];
   let currentKiosk = { x: 0, y: 0 };
   let currentViewBox = "0 0 800 400";
@@ -54,25 +70,26 @@ export default function MapScreen() {
     currentWallsPath = B1_F1_WALLS;
     currentNodes = B1_F1_NODES;
     currentEdges = B1_F1_EDGES;
+  } else if (activeBuilding === 2 && activeFloor === 2) {
+    currentRooms = B2_F2_ROOMS;
+    currentKiosk = B2_F2_KIOSK;
+    currentViewBox = B2_F2_VIEWBOX;
+    currentWallsPath = B2_F2_WALLS;
+    currentNodes = B2_F2_NODES;
+    currentEdges = B2_F2_EDGES;
   }
 
-  // 4. НОВА ФУНКЦІЯ МАРШРУТУ (Використовує Алгоритм Дейкстри)
+  // ФУНКЦІЯ МАРШРУТУ (Алгоритм Дейкстри)
   const generateRoutePath = () => {
     if (!targetRoomId || currentNodes.length === 0) return '';
     
-    // Перевіряємо, чи існує кабінет, який ми шукаємо
     const room = currentRooms.find(r => r.id === targetRoomId);
     if (!room) return '';
 
-    // Запускаємо алгоритм: від Кіоску до обраного кабінету
-    // ВАЖЛИВО: ID цілі має збігатися з ID вузла в масиві NODES
     const pathNodes = findShortestPath('kiosk', targetRoomId, currentNodes, currentEdges);
     
-    // Якщо шлях не знайдено - повертаємо пустоту
     if (pathNodes.length === 0) return '';
 
-    // Малюємо лінію, що з'єднує знайдені вузли
-    // Беремо перший вузол (M - Move to) і далі ведемо лінії (L - Line to) до наступних
     let pathString = `M ${pathNodes[0].x} ${pathNodes[0].y} `;
     for (let i = 1; i < pathNodes.length; i++) {
       pathString += `L ${pathNodes[i].x} ${pathNodes[i].y} `;
@@ -154,9 +171,14 @@ export default function MapScreen() {
         ) : (
           <Svg width="100%" height="100%" viewBox={currentViewBox}>
             
-            {/* Креслення стін */}
+            {/* Креслення стін (БЕЗ currentWallsTransform) */}
             {currentWallsPath !== "" && (
-              <Path d={currentWallsPath} stroke="#9CA3AF" strokeWidth="6" fill="none" />
+              <Path 
+                d={currentWallsPath} 
+                stroke="#9CA3AF" 
+                strokeWidth="6" 
+                fill="none" 
+              />
             )}
 
             {/* КАБІНЕТИ */}
@@ -170,9 +192,9 @@ export default function MapScreen() {
                     stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
                   />
                   <SvgText 
-                    x={room.x + (room.width / 2)} y={room.y + (room.height / 2) + 20} 
+                    x={room.x + (room.width / 2)} y={room.y + (room.height / 2) + 40} 
                     fill={isActive ? Colors.white : Colors.textMain} 
-                    fontSize="70" fontWeight="bold" textAnchor="middle"
+                    fontSize="160" fontWeight="bold" textAnchor="middle"
                   >
                     {room.label}
                   </SvgText>
@@ -180,7 +202,7 @@ export default function MapScreen() {
               );
             })}
 
-            {/* МАРШРУТ (Намальований за алгоритмом!) */}
+            {/* МАРШРУТ */}
             {targetRoomId && (
               <Path 
                 d={generateRoutePath()} 
@@ -202,7 +224,6 @@ export default function MapScreen() {
           </Svg>
         )}
       </View>
-
     </View>
   );
 }
