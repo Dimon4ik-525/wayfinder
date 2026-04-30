@@ -4,7 +4,7 @@ export const ROOMS = [
   // Верхнє крило (зліва направо)
   { id: '3', label: 'Кабінет 3', building: 1, floor: 2, x: 30, y: 30, width: 710, height: 305 },
   { id: '4', label: 'Кабінет 4', building: 1, floor: 2, x: 760, y: 30, width: 710, height: 305 },
-  { id: '5a', label: ' 5а', building: 1, floor: 2, x: 1485, y: 30, width: 160, height: 305 },
+  { id: '5a', label: 'Кабінет 5а', building: 1, floor: 2, x: 1485, y: 30, width: 160, height: 305 },
   { id: '5', label: 'Кабінет 5', building: 1, floor: 2, x: 1670, y: 30, width: 350, height: 305 },
   { id: '6', label: 'Кабінет 6', building: 1, floor: 2, x: 2040, y: 30, width: 730, height: 305 },
 
@@ -18,8 +18,10 @@ export const ROOMS = [
   { id: '9', label: 'Кабінет 9', building: 1, floor: 2, x: 2270, y: 1930, width: 280, height: 550 },
 ];
 
-// Точка старту ("ВИ ТУТ") — Праві сходи
-export const KIOSK_POSITION = { x: 2460, y: 450 };
+// Точки старту ("ВИ ТУТ") — тепер це масив для гнучкості
+export const START_POINTS = [
+  { id: 'start_stairs_right', label: 'Праві сходи', x: 2460, y: 450 }
+];
 
 export const VIEW_BOX = "0 0 2806 2514";
 
@@ -32,7 +34,7 @@ export const WALLS_TRANSFORM = "";
 
 export const NODES = [
   // СТАРТ: Праві сходи
-  { id: 'kiosk', x: 2460, y: 450 },
+  { id: 'start_stairs_right', x: 2460, y: 450 },
 
   // --- ГОРИЗОНТАЛЬНИЙ КОРИДОР (Верхнє крило, Вісь Y = 450) ---
   { id: 'c_6', x: 2105, y: 450 },
@@ -50,49 +52,45 @@ export const NODES = [
   { id: 'c_9', x: 2180, y: 2335 },
   
   // --- КІНЦЕВІ ТОЧКИ В КАБІНЕТАХ ---
-  // Верхні кабінети (Заходимо ВГОРУ)
+  // Верхні кабінети 
   { id: '3', x: 480, y: 200 },
   { id: '4', x: 1200, y: 200 },
   { id: '5', x: 1745, y: 200 },
   { id: '5a', x: 1565, y: 280 },
   { id: '6', x: 2105, y: 200 },
   
-  // Праві кабінети (Заходимо ВПРАВО)
+  // Праві кабінети 
   { id: '7', x: 2290, y: 835 },
   { id: '8', x: 2410, y: 1665 },
   { id: '9', x: 2410, y: 2335 },
 
-  // Ліві кабінети вертикального крила (Заходимо ВЛІВО)
+  // Ліві кабінети вертикального крила 
   { id: '11', x: 1900, y: 1005 },
   { id: '10', x: 1900, y: 1855 },
 ];
 
 export const EDGES = [
   // Маршрут по верхньому горизонтальному коридору
-  { from: 'kiosk', to: 'c_cross' },
-  { from: 'c_cross', to: 'c_6' },
-  { from: 'c_6', to: 'c_5' },
-  { from: 'c_5', to: 'c_5a' },
-  { from: 'c_5', to: 'c_4' },
-  { from: 'c_4', to: 'c_3' },
+  { from: 'start_stairs_right', to: 'c_cross' },
+  
+  { from: 'c_cross', to: 'c_6' }, { from: 'c_6', to: '6' }, // каб 6
+
+  { from: 'c_6', to: 'c_5' }, { from: 'c_5', to: '5' }, // каб 5
+  
+  { from: 'c_5', to: 'c_5a' }, { from: 'c_5a', to: '5a' }, // каб 5а
+  
+  { from: 'c_5', to: 'c_4' },  { from: 'c_4', to: '4' }, // каб 4
+
+  { from: 'c_4', to: 'c_3' }, { from: 'c_3', to: '3' }, // каб 3
 
   // Маршрут по вертикальному коридору вниз
-  { from: 'c_cross', to: 'c_7' },
-  { from: 'c_7', to: 'c_11' },
-  { from: 'c_11', to: 'c_8' },
-  { from: 'c_8', to: 'c_10' },
-  { from: 'c_10', to: 'c_9' },
+  { from: 'c_cross', to: 'c_7' }, { from: 'c_7', to: '7' }, // каб 7
 
-  // Заходи В СЕРЕДИНУ кабінетів (Під кутом 90 градусів)
-  { from: 'c_6', to: '6' },
-  { from: 'c_5', to: '5' },
-  { from: 'c_5a', to: '5a' },
-  { from: 'c_4', to: '4' },
-  { from: 'c_3', to: '3' },
+  { from: 'c_7', to: 'c_11' }, { from: 'c_11', to: '11' }, // каб 11
+
+  { from: 'c_11', to: 'c_8' }, { from: 'c_8', to: '8' }, // каб 8
   
-  { from: 'c_7', to: '7' },
-  { from: 'c_11', to: '11' },
-  { from: 'c_8', to: '8' },
-  { from: 'c_10', to: '10' },
-  { from: 'c_9', to: '9' },
+  { from: 'c_8', to: 'c_10' }, { from: 'c_10', to: '10' }, // каб 10
+
+  { from: 'c_10', to: 'c_9' }, { from: 'c_9', to: '9' }, // каб 9
 ];
