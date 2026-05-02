@@ -28,7 +28,6 @@ console.error = (...args) => {
 import { findShortestPath } from '../utils/navigation';
 
 // --- КОРПУС 1 ---
-// (Тут ми використовуємо нову логіку START_POINTS)
 import { 
   ROOMS as B1_F1_ROOMS, VIEW_BOX as B1_F1_VIEWBOX, 
   WALLS_PATH as B1_F1_WALLS, NODES as B1_F1_NODES, EDGES as B1_F1_EDGES, START_POINTS as B1_F1_START_POINTS
@@ -46,11 +45,17 @@ import {
 
 
 // --- КОРПУС 2 ---
-// (Залишаємо стару логіку KIOSK_POSITION, поки ти її не оновиш)
+// (2 Корпус, 2 Поверх - поки стара логіка KIOSK_POSITION)
 import { 
   ROOMS as B2_F2_ROOMS, KIOSK_POSITION as B2_F2_KIOSK, VIEW_BOX as B2_F2_VIEWBOX, 
   WALLS_PATH as B2_F2_WALLS, NODES as B2_F2_NODES, EDGES as B2_F2_EDGES
 } from '../constants/maps/corp2/floor2'; 
+
+// ДОДАНО: 2 Корпус, 3 Поверх (з новою логікою START_POINTS)
+import { 
+  ROOMS as B2_F3_ROOMS, VIEW_BOX as B2_F3_VIEWBOX, 
+  WALLS_PATH as B2_F3_WALLS, NODES as B2_F3_NODES, EDGES as B2_F3_EDGES, START_POINTS as B2_F3_START_POINTS
+} from '../constants/maps/corp2/floor3'; 
 
 
 // Збираємо всі кімнати в одну глобальну базу для пошуку
@@ -58,7 +63,8 @@ const ALL_ROOMS = [
   ...B1_F1_ROOMS,
   ...B1_F2_ROOMS,
   ...B1_F3_ROOMS,
-  ...B2_F2_ROOMS
+  ...B2_F2_ROOMS,
+  ...B2_F3_ROOMS // ДОДАНО нові кімнати
 ];
 
 export default function MapScreen() {
@@ -122,6 +128,10 @@ export default function MapScreen() {
     currentWallsPath = B2_F2_WALLS; currentNodes = B2_F2_NODES; currentEdges = B2_F2_EDGES;
     // Тимчасове рішення для старих поверхів, які ще використовують KIOSK_POSITION
     currentStartPoints = [{ id: 'kiosk', label: 'Старт', x: B2_F2_KIOSK.x, y: B2_F2_KIOSK.y }];
+  } else if (activeBuilding === 2 && activeFloor === 3) { // ДОДАНО: Логіка для 2 корпусу 3 поверху
+    currentRooms = B2_F3_ROOMS; currentViewBox = B2_F3_VIEWBOX;
+    currentWallsPath = B2_F3_WALLS; currentNodes = B2_F3_NODES; currentEdges = B2_F3_EDGES;
+    currentStartPoints = B2_F3_START_POINTS || [];
   }
 
   // Обчислення правильного старту для графа
