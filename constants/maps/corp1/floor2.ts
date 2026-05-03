@@ -4,7 +4,7 @@ export const ROOMS = [
   // Верхнє крило (зліва направо)
   { id: '3', label: 'Кабінет 3', building: 1, floor: 2, x: 30, y: 30, width: 710, height: 305 },
   { id: '4', label: 'Кабінет 4', building: 1, floor: 2, x: 760, y: 30, width: 710, height: 305 },
-  { id: '5a', label: 'Кабінет 5а', building: 1, floor: 2, x: 1485, y: 30, width: 160, height: 305 },
+  { id: '5a', label: 'Кабінет \n 5а', building: 1, floor: 2, x: 1485, y: 30, width: 160, height: 305 },
   { id: '5', label: 'Кабінет 5', building: 1, floor: 2, x: 1670, y: 30, width: 350, height: 305 },
   { id: '6', label: 'Кабінет 6', building: 1, floor: 2, x: 2040, y: 30, width: 730, height: 305 },
 
