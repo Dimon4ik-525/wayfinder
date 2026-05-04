@@ -6,7 +6,7 @@ export const ROOMS = [
   { id: '12', label: 'Кабінет 12', building: 1, floor: 1, x: 820, y: 1515, width: 575, height: 300 },
   { id: 'bufet', label: 'Буфет', building: 1, floor: 1, x: 1405, y: 1515, width: 140, height: 300 },
   { id: 'wc', label: 'WC', building: 1, floor: 1, x: 1555, y: 1515, width: 175, height: 130 },
-  { id: 'archive', label: 'Архів', building: 1, floor: 1, x: 1630, y: 1650, width: 100, height: 160 },
+  { id: 'archive', label: 'Архів \n №1', building: 1, floor: 1, x: 1630, y: 1650, width: 100, height: 160 },
   { id: '14', label: 'Кабінет 14', building: 1, floor: 1, x: 20, y: 1955, width: 340, height: 295 },
   { id: 'rozklad', label: 'Розклад', building: 1, floor: 1, x: 370, y: 1955, width: 440, height: 295 },
   { id: 'bibl', label: 'Бібліотека', building: 1, floor: 1, x: 820, y: 1950, width: 560, height: 295 },
@@ -15,7 +15,7 @@ export const ROOMS = [
 
 export const START_POINTS = [
   { id: 'start_main', label: 'Головний вхід', x: 2100, y: 1880 },
-  { id: 'start_corp2', label: 'Вхід з 2-го корпусу', x: 380, y: 2450 }, 
+  { id: 'start_corp2', label: 'Перехід в корпус №2', x: 380, y: 2450 }, 
 ];
 
 export const KIOSK_POSITION = { x: 1830, y: 1880 }; 
@@ -32,6 +32,10 @@ export const NODES = [
   
   { id: 'main', x: 1830, y: 1880 }, // головний вузол 1 корпусу
   
+  // вузол сходів на 2 поверх
+  { id: 'stairs_main', x: 1830, y: 2300 },
+
+
   // ГОРИЗОНТАЛЬНИЙ КОРИДОР (Y = 1880)
   { id: 'c_archive', x: 1660, y: 1880 },
   { id: 'c_wc', x: 1580, y: 1880 },    
@@ -87,9 +91,12 @@ export const EDGES = [
   { from: 'c_gym', to: 'gym' },
 
   // читальна зала
-  { from: 'main', to: 'c_chit' },
-  { from: 'c_chit', to: 'chit' },
- 
+  // { from: 'main', to: 'c_chit' },
+  // { from: 'c_chit', to: 'chit' },
+  { from: 'main', to: 'stairs_main' },
+  { from: 'stairs_main', to: 'chit' },
+
+
   //архів
   { from: 'main', to: 'c_archive' },
   { from: 'c_archive', to: 'archive' },
@@ -118,4 +125,9 @@ export const EDGES = [
   { from: 'c_rozklad', to: 'c_13_14' },
   { from: 'c_13_14', to: '13' },
   { from: 'c_13_14', to: '14' },
+
+  // сходи на 2 поверх
+  { from: 'main', to: 'stairs_main' },
+  { from: 'stairs_main', to: 'main' },
+
 ];

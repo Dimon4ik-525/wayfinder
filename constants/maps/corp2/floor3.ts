@@ -16,7 +16,7 @@ export const ROOMS = [
 
 // ТОЧКИ СТАРТУ 
 export const START_POINTS = [
-  { id: 'start_stairs_main', label: 'Головні сходи', x: 1145, y: 450 }, 
+  { id: 'stairs_main', label: 'Головні сходи', x: 1040, y: 350 }, 
 //{ id: 'start_stairs_side', label: 'Бокові сходи', x: 2385, y: 950 },  // для другого входу, якщо буде потрібно
 ];
 
@@ -31,13 +31,13 @@ export const WALLS_TRANSFORM = "";
 
 export const NODES = [
   // СТАРТИ
-  { id: 'start_stairs_main', x: 1145, y: 450 },
+  { id: 'stairs_main', x: 1040, y: 350 },
 //{ id: 'start_stairs_side', x: 2385, y: 950 }, // для другого входу, якщо буде потрібно
 
   // ВУЗЛИ КОРИДОРУ 
-  { id: 'c_26', x: 1145, y: 645 },       
-  { id: 'c_27_28', x: 1145, y: 860 }, 
-  { id: 'c_stairs_main', x: 1145, y: 675 }, 
+  { id: 'c_26', x: 1040, y: 645 },       
+  { id: 'c_27_28', x: 1040, y: 860 }, 
+  { id: 'c_stairs_main', x: 1040, y: 675 }, 
   { id: 'c_psycho', x: 1450, y: 675 },    
   { id: 'c_method', x: 1730, y: 675 },    
   { id: 'c_archive2', x: 2355, y: 675 },   
@@ -57,7 +57,7 @@ export const NODES = [
 
 export const EDGES = [
   // Від сходів до коридору
-  { from: 'start_stairs_main', to: 'c_26' },
+  { from: 'stairs_main', to: 'c_26' },
   { from: 'c_26', to: 'c_stairs_main' },
   { from: 'c_stairs_main', to: 'c_27_28' },
   
