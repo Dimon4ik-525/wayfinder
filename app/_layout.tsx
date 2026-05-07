@@ -1,7 +1,10 @@
 import { Slot, useRouter, usePathname } from 'expo-router';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native'; // ДОДАНО: імпорт Image
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Colors } from '../constants/theme'; 
+
+// 👇 ДОДАНО: імпорт нашого віджета
+import EventsWidget from '../components/EventsWidget'; 
 
 export default function RootLayout() {
   const router = useRouter();
@@ -33,7 +36,7 @@ export default function RootLayout() {
       {/* ЛІВИЙ САЙДБАР */}
       <View style={styles.sidebar}>
         
-        {/* ОНОВЛЕНО: Блок з реальним логотипом */}
+        {/* Блок з реальним логотипом */}
         <View style={styles.logoContainer}>
           <Image 
             source={require('../assets/images/logo.png')} 
@@ -63,6 +66,9 @@ export default function RootLayout() {
           </TouchableOpacity>
         </View>
 
+        {/* 👇 ВСТАВЛЯЄМО ВІДЖЕТ ТУТ 👇 */}
+        <EventsWidget />
+
         {/* ЖИВИЙ ГОДИННИК */}
         <View style={styles.clockContainer}>
           <Text style={styles.time}>{formatTime(currentTime)}</Text>
@@ -91,7 +97,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between' 
   },
   
-  // ОНОВЛЕНО: Стилі для логотипу
   logoContainer: { 
     width: 120, 
     height: 120, 
@@ -99,14 +104,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center', 
     borderRadius: 16,
-    padding: 10 // Відступ, щоб лого не прилипало до країв
+    padding: 10 
   },
   logoImage: {
     width: '100%',
     height: '100%',
   },
   
-  menuContainer: { width: '100%', paddingHorizontal: 20, marginTop: 40, flex: 1 },
+  // 👇 ЗМІНЕНО: Прибрали flex: 1, щоб меню займало рівно стільки місця, скільки треба
+  menuContainer: { width: '100%', paddingHorizontal: 20, marginTop: 40 },
+  
   menuButton: { paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginBottom: 10, flexDirection: 'row', alignItems: 'center' },
   menuButtonActive: { backgroundColor: Colors.primary },
   menuText: { color: Colors.textSecondary, fontSize: 18, fontWeight: '600' },

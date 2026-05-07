@@ -20,7 +20,7 @@ export const ROOMS = [
 
 // Точки старту ("ВИ ТУТ") — тепер це масив для гнучкості
 export const START_POINTS = [
-  { id: 'start_stairs_right', label: 'Праві сходи', x: 2460, y: 450 }
+  { id: 'stairs_main', label: 'Праві сходи', x: 2585, y: 450 }
 ];
 
 export const VIEW_BOX = "0 0 2806 2514";
@@ -34,7 +34,7 @@ export const WALLS_TRANSFORM = "";
 
 export const NODES = [
   // СТАРТ: Праві сходи
-  { id: 'start_stairs_right', x: 2460, y: 450 },
+  { id: 'stairs_main', x: 2585, y: 450 },
 
   // --- ГОРИЗОНТАЛЬНИЙ КОРИДОР (Верхнє крило, Вісь Y = 450) ---
   { id: 'c_6', x: 2105, y: 450 },
@@ -71,7 +71,7 @@ export const NODES = [
 
 export const EDGES = [
   // Маршрут по верхньому горизонтальному коридору
-  { from: 'start_stairs_right', to: 'c_cross' },
+  { from: 'stairs_main', to: 'c_cross' },
   
   { from: 'c_cross', to: 'c_6' }, { from: 'c_6', to: '6' }, // каб 6
 

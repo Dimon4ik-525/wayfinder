@@ -19,11 +19,7 @@ export const ROOMS = [
 // ТОЧКИ СТАРТУ
 export const START_POINTS = [
   { id: 'start_entrance', label: 'Головний вхід', x: 1220, y: 1050 },
-  { id: 'start_transition', label: 'Перехід в корпус №1', x: 50, y: 640 },
-  
-  // ЗАГОТОВКИ СХОДІВ (просто розкоментуй, коли знадобиться для маршрутів між поверхами):
-  // { id: 'start_stairs_main', label: 'Головні сходи', x: 1300, y: 150 },
-  // { id: 'start_stairs_side', label: 'Бокові сходи', x: 2600, y: 1100 },
+  { id: 'start_corp1', label: 'Перехід в корпус №1', x: 50, y: 640 },
 ];
 
 export const VIEW_BOX = "0 0 3661 1474";
@@ -36,16 +32,20 @@ export const WALLS_TRANSFORM = "";
 // --- НАВІГАЦІЙНИЙ ГРАФ ---
 
 export const NODES = [
+  // СХОДИ
+  { id: 'stairs_main', label: 'Головні сходи', x: 1410, y: 330 },
+  { id: 'c_stairs_main', x: 1410, y: 710 },
+
   // СТАРТИ
   { id: 'start_entrance', x: 1220, y: 1050 },
-  { id: 'start_transition', x: 50, y: 640 },
+  { id: 'start_corp1', x: 50, y: 640 },
 
   // ВУЗЛИ КОРИДОРУ 
   { id: 'c_trans', x: 50, y: 710 },
   { id: 'c_teacher', x: 600, y: 710 },
   { id: 'c_15', x: 250, y: 710 },
   { id: 'c_heads', x: 745, y: 710 },
-  { id: 'c_main_ent', x: 1220, y: 710 },
+  { id: 'main', x: 1220, y: 710 },
   { id: 'c_18', x: 1905, y: 710 },
   { id: 'c_hr', x: 2125, y: 710 },
   { id: 'c_head_prof', x: 2355, y: 710 },
@@ -65,21 +65,30 @@ export const NODES = [
 
 export const EDGES = [
   // З'єднання входів з коридором
-  { from: 'start_entrance', to: 'c_main_ent' },
-  { from: 'start_transition', to: 'c_trans' },
+  { from: 'start_entrance', to: 'main' },
+  { from: 'start_corp1', to: 'c_trans' },
 
   // Головний горизонтальний коридор (зліва направо)
+  {from: 'c_15', to: 'c_trans' },
+  {from: 'c_trans', to: 'start_corp1' },
+
+
+
   { from: 'c_trans', to: 'c_15' },
   { from: 'c_15', to: 'c_teacher' },
   { from: 'c_teacher', to: 'c_heads' },
-  { from: 'c_heads', to: 'c_main_ent' },
-  { from: 'c_main_ent', to: 'c_18' },
+  { from: 'c_heads', to: 'main' },
+   
+  // { from: 'main', to: 'c_18' },
+  { from: 'main', to: 'c_stairs_main' },
+  { from: 'c_stairs_main', to: 'c_18' },
   { from: 'c_18', to: 'c_hr' },
   { from: 'c_hr', to: 'c_head_prof' },
   { from: 'c_head_prof', to: 'c_right_stairs' },
   { from: 'c_right_stairs', to: 'c_20' },
 
   // Від коридору до кабінетів
+  { from: 'c_stairs_main', to: 'stairs_main' },
   { from: 'c_teacher', to: 'teacher' },
   { from: 'c_15', to: '15' },
   { from: 'c_heads', to: 'heads_dep' },

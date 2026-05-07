@@ -25,7 +25,8 @@ console.error = (...args) => {
   originalConsoleError(...args);
 };
 
-import { findShortestPath } from '../utils/navigation';
+// Імпорт нової функції багатоповерхової та багаторкорпусної навігації
+import { findShortestPath, buildGlobalRoute, RouteStepInfo } from '../utils/navigation';
 
 // --- КОРПУС 1 ---
 import { 
@@ -45,16 +46,14 @@ import {
 
 
 // --- КОРПУС 2 ---
-// ДОДАНО: 2 Корпус, 1 Поверх (з новою логікою START_POINTS)
 import { 
   ROOMS as B2_F1_ROOMS, VIEW_BOX as B2_F1_VIEWBOX, 
   WALLS_PATH as B2_F1_WALLS, NODES as B2_F1_NODES, EDGES as B2_F1_EDGES, START_POINTS as B2_F1_START_POINTS
 } from '../constants/maps/corp2/floor1'; 
 
-// (2 Корпус, 2 Поверх - поки стара логіка KIOSK_POSITION)
 import { 
-  ROOMS as B2_F2_ROOMS, KIOSK_POSITION as B2_F2_KIOSK, VIEW_BOX as B2_F2_VIEWBOX, 
-  WALLS_PATH as B2_F2_WALLS, NODES as B2_F2_NODES, EDGES as B2_F2_EDGES
+  ROOMS as B2_F2_ROOMS, VIEW_BOX as B2_F2_VIEWBOX, 
+  WALLS_PATH as B2_F2_WALLS, NODES as B2_F2_NODES, EDGES as B2_F2_EDGES, START_POINTS as B2_F2_START_POINTS
 } from '../constants/maps/corp2/floor2'; 
 
 import { 
@@ -68,7 +67,7 @@ const ALL_ROOMS = [
   ...B1_F1_ROOMS,
   ...B1_F2_ROOMS,
   ...B1_F3_ROOMS,
-  ...B2_F1_ROOMS, // ДОДАНО нові кімнати
+  ...B2_F1_ROOMS, 
   ...B2_F2_ROOMS,
   ...B2_F3_ROOMS
 ];
@@ -82,9 +81,16 @@ export default function MapScreen() {
   const [now, setNow] = useState(new Date());
   
   const [targetRoomId, setTargetRoomId] = useState<string | null>((params.room as string) || null);
-  
-  // Змінна для зберігання вибраного входу (за замовчуванням Головний вхід)
   const [activeStartId, setActiveStartId] = useState('start_main');
+
+  // Стан для зберігання інструкцій маршруту
+  const [routeInfo, setRouteInfo] = useState<RouteStepInfo | null>(null);
+
+  // Стан для "пам'яті" про те, звідки ми починали маршрут
+  const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
+
+  // ДОДАНО: Стек історії для кнопки "Назад" (запам'ятовує кожен крок маршруту)
+  const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -103,19 +109,32 @@ export default function MapScreen() {
     : ALL_ROOMS.filter(room => room.label.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const handleSelectRoomFromSearch = (room: any) => {
-    setActiveBuilding(room.building);
-    setActiveFloor(room.floor);
     setTargetRoomId(room.id);
-    setSearchQuery(''); // Ховаємо список після вибору
+    setSearchQuery('');
   };
 
-  // Динамічний вибір даних для поточної мапи
+  // Слідкуємо за появою/зникненням цілі, щоб правильно зберігати точку повернення
+  useEffect(() => {
+    if (targetRoomId && !initialRouteConfig) {
+      setInitialRouteConfig({
+        building: activeBuilding,
+        floor: activeFloor,
+        startId: activeStartId
+      });
+      setRouteHistory([]); // Очищаємо історію при новому маршруті
+    }
+    if (!targetRoomId && initialRouteConfig) {
+      setInitialRouteConfig(null);
+      setRouteHistory([]); // Очищаємо історію, якщо маршрут скинуто
+    }
+  }, [targetRoomId]);
+
   let currentRooms: any[] = [];
   let currentViewBox = "0 0 800 400";
   let currentWallsPath = "";
   let currentNodes: any[] = [];
   let currentEdges: any[] = [];
-  let currentStartPoints: any[] = []; // Уніфікований масив точок старту
+  let currentStartPoints: any[] = []; 
 
   if (activeBuilding === 1 && activeFloor === 1) {
     currentRooms = B1_F1_ROOMS; currentViewBox = B1_F1_VIEWBOX;
@@ -129,53 +148,124 @@ export default function MapScreen() {
     currentRooms = B1_F3_ROOMS; currentViewBox = B1_F3_VIEWBOX;
     currentWallsPath = B1_F3_WALLS; currentNodes = B1_F3_NODES; currentEdges = B1_F3_EDGES;
     currentStartPoints = B1_F3_START_POINTS || [];
-  } else if (activeBuilding === 2 && activeFloor === 1) { // ДОДАНО: Логіка для 2 корпусу 1 поверху
+  } else if (activeBuilding === 2 && activeFloor === 1) { 
     currentRooms = B2_F1_ROOMS; currentViewBox = B2_F1_VIEWBOX;
     currentWallsPath = B2_F1_WALLS; currentNodes = B2_F1_NODES; currentEdges = B2_F1_EDGES;
     currentStartPoints = B2_F1_START_POINTS || [];
   } else if (activeBuilding === 2 && activeFloor === 2) {
     currentRooms = B2_F2_ROOMS; currentViewBox = B2_F2_VIEWBOX;
     currentWallsPath = B2_F2_WALLS; currentNodes = B2_F2_NODES; currentEdges = B2_F2_EDGES;
-    // Тимчасове рішення для старих поверхів, які ще використовують KIOSK_POSITION
-    currentStartPoints = [{ id: 'kiosk', label: 'Старт', x: B2_F2_KIOSK.x, y: B2_F2_KIOSK.y }];
+    currentStartPoints = B2_F2_START_POINTS || [];
   } else if (activeBuilding === 2 && activeFloor === 3) {
     currentRooms = B2_F3_ROOMS; currentViewBox = B2_F3_VIEWBOX;
     currentWallsPath = B2_F3_WALLS; currentNodes = B2_F3_NODES; currentEdges = B2_F3_EDGES;
     currentStartPoints = B2_F3_START_POINTS || [];
   }
 
-  // Обчислення правильного старту для графа
   let effectiveStartId = activeStartId;
   let dynamicKioskPosition = { x: 0, y: 0 };
 
   if (currentStartPoints && currentStartPoints.length > 0) {
-    // Якщо вибраного входу немає на цьому поверсі - вибираємо перший доступний
     if (!currentStartPoints.find(p => p.id === activeStartId)) {
       effectiveStartId = currentStartPoints[0].id;
     }
-    // Шукаємо координати вибраного входу
     const selectedStartPoint = currentStartPoints.find(p => p.id === effectiveStartId) || currentStartPoints[0];
     dynamicKioskPosition = { x: selectedStartPoint.x, y: selectedStartPoint.y };
   } else {
-    effectiveStartId = 'kiosk';
+    effectiveStartId = 'none';
+    dynamicKioskPosition = { x: 0, y: 0 };
   }
 
-  // Обчислення маршруту
-  const generateRoutePath = () => {
-    if (!targetRoomId || currentNodes.length === 0) return '';
-    const room = currentRooms.find(r => r.id === targetRoomId);
-    if (!room) return '';
-    
-    // БУДУЄМО ВІД ПРАВИЛЬНОГО ВХОДУ!
-    const pathNodes = findShortestPath(effectiveStartId, targetRoomId, currentNodes, currentEdges);
-    
-    if (pathNodes.length === 0) return '';
+  useEffect(() => {
+    if (!targetRoomId || currentNodes.length === 0) {
+      setRouteInfo(null);
+      return;
+    }
 
+    const targetRoom = ALL_ROOMS.find(r => r.id === targetRoomId);
+    
+    if (!targetRoom) {
+      setRouteInfo(null);
+      return;
+    }
+
+    const info = buildGlobalRoute(
+        activeBuilding,
+        targetRoom.building,
+        activeFloor, 
+        targetRoom.floor, 
+        effectiveStartId, 
+        targetRoomId, 
+        currentNodes, 
+        currentEdges
+    );
+    
+    setRouteInfo(info);
+  }, [targetRoomId, activeBuilding, activeFloor, effectiveStartId, currentNodes, currentEdges]); 
+
+
+  const generateRoutePathString = () => {
+    if (!routeInfo || routeInfo.pathNodes.length === 0) return '';
+    
+    const { pathNodes } = routeInfo;
     let pathString = `M ${pathNodes[0].x} ${pathNodes[0].y} `;
     for (let i = 1; i < pathNodes.length; i++) {
       pathString += `L ${pathNodes[i].x} ${pathNodes[i].y} `;
     }
     return pathString;
+  };
+
+  // Крок ВПЕРЕД
+  const handleFloorChangeInstruction = () => {
+    if (!routeInfo) return;
+
+    // Зберігаємо поточний стан в історію перед переходом на інший поверх/корпус
+    setRouteHistory(prev => [...prev, {
+      building: activeBuilding,
+      floor: activeFloor,
+      startId: effectiveStartId
+    }]);
+
+    if (routeInfo.isMultiBuilding && routeInfo.nextBuilding) {
+        setActiveBuilding(routeInfo.nextBuilding);
+        setActiveFloor(routeInfo.nextFloor || 1); 
+        setActiveStartId(routeInfo.nextStartId); 
+    } else if (routeInfo.isMultiFloor && routeInfo.nextFloor) {
+        setActiveFloor(routeInfo.nextFloor);
+        setActiveStartId(routeInfo.nextStartId); 
+    }
+  };
+
+  // ДОДАНО: Крок НАЗАД (повертає на попередній етап маршруту)
+  const handleStepBack = () => {
+    if (routeHistory.length === 0) return;
+
+    const newHistory = [...routeHistory];
+    const previousState = newHistory.pop(); // Дістаємо останній збережений крок
+
+    if (previousState) {
+        setActiveBuilding(previousState.building);
+        setActiveFloor(previousState.floor);
+        setActiveStartId(previousState.startId);
+        setRouteHistory(newHistory); // Оновлюємо історію, видаливши з неї цей крок
+    }
+  };
+
+  const handleResetRoute = () => {
+    if (initialRouteConfig) {
+      setActiveBuilding(initialRouteConfig.building);
+      setActiveFloor(initialRouteConfig.floor);
+      setActiveStartId(initialRouteConfig.startId);
+    } else {
+      setActiveFloor(1); 
+      setActiveBuilding(1); 
+      setActiveStartId('start_main'); 
+    }
+    
+    setTargetRoomId(null);
+    setSearchQuery('');
+    setRouteInfo(null);
+    setRouteHistory([]); // Очищаємо історію
   };
 
   return (
@@ -184,7 +274,7 @@ export default function MapScreen() {
       {/* ВЕРХНЯ ПАНЕЛЬ */}
       <View style={styles.topBar}>
         
-        {/* Блок пошуку (із Z-index для випадаючого списку) */}
+        {/* Блок пошуку */}
         <View style={styles.searchWrapper}>
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
@@ -223,7 +313,7 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* ПАНЕЛЬ ВИБОРУ ВХОДУ (тільки якщо на поверсі >1 входу) */}
+      {/* ПАНЕЛЬ ВИБОРУ ВХОДУ */}
       {currentStartPoints && currentStartPoints.length > 1 && (
         <View style={styles.startPointsPanel}>
           <Text style={styles.startPointsLabel}>Почати маршрут від:</Text>
@@ -246,7 +336,7 @@ export default function MapScreen() {
       {/* ЗАГОЛОВОК */}
       <Text style={styles.mapTitle}>
         Корпус {activeBuilding}, {activeFloor} поверх — <Text style={{ fontWeight: 'bold' }}>
-          {targetRoomId ? `ціль: каб. ${targetRoomId}` : 'Оберіть кабінет'}
+          {targetRoomId ? `ціль: ${ALL_ROOMS.find(r => r.id === targetRoomId)?.label || 'каб. ' + targetRoomId}` : 'Оберіть кабінет'}
         </Text>
       </Text>
 
@@ -259,7 +349,9 @@ export default function MapScreen() {
               style={[styles.tabButton, activeBuilding === building && styles.tabButtonActive]}
               onPress={() => {
                 setActiveBuilding(building);
-                setTargetRoomId(null);
+                setTargetRoomId(null); 
+                setActiveFloor(1); 
+                setRouteHistory([]); // Ручне перемикання скидає історію
               }}
             >
               <Text style={[styles.tabButtonText, activeBuilding === building && styles.tabButtonTextActive]}>
@@ -276,7 +368,6 @@ export default function MapScreen() {
               style={[styles.tabButton, activeFloor === floor && styles.tabButtonActive]}
               onPress={() => {
                 setActiveFloor(floor);
-                setTargetRoomId(null);
               }}
             >
               <Text style={[styles.tabButtonText, activeFloor === floor && styles.tabButtonTextActive]}>
@@ -295,10 +386,38 @@ export default function MapScreen() {
           viewBox={currentViewBox}
           wallsPath={currentWallsPath}
           targetRoomId={targetRoomId}
-          routePath={generateRoutePath()}
+          routePath={generateRoutePathString()}
           onRoomSelect={setTargetRoomId}
         />
       </View>
+
+      {/* БЛОК КНОПОК НАВІГАЦІЇ (ПІД КАРТОЮ) */}
+      {(routeInfo?.isMultiFloor || routeInfo?.isMultiBuilding || targetRoomId) && (
+        <View style={styles.instructionContainer}>
+            
+            {/* ДОДАНО: Кнопка Назад (з'являється тільки якщо є історія кроків) */}
+            {routeHistory.length > 0 && (
+                <TouchableOpacity style={[styles.instructionButton, styles.stepBackButton]} onPress={handleStepBack}>
+                    <Text style={styles.stepBackText}>⬅ Крок назад</Text>
+                </TouchableOpacity>
+            )}
+
+            {/* Основна дія: Вперед або Завершити */}
+            {routeInfo?.isMultiFloor || routeInfo?.isMultiBuilding ? (
+                // Синя кнопка переходу
+                <TouchableOpacity style={styles.instructionButton} onPress={handleFloorChangeInstruction}>
+                    <Text style={styles.instructionText}>{routeInfo.instruction}</Text>
+                </TouchableOpacity>
+            ) : (
+                // Сіра кнопка завершення (замість неї тепер фінальна дія)
+                <TouchableOpacity style={[styles.instructionButton, styles.returnButton]} onPress={handleResetRoute}>
+                    <Text style={styles.instructionText}> Завершити маршрут</Text>
+                </TouchableOpacity>
+            )}
+            
+        </View>
+      )}
+
     </View>
   );
 }
@@ -352,5 +471,46 @@ const styles = StyleSheet.create({
   },
   tabButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textSecondary },
   tabButtonTextActive: { color: Colors.primary },
-  mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10, backgroundColor: Colors.white, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1 }
+  
+  mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10, backgroundColor: Colors.white, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
+  
+  // ОНОВЛЕНІ СТИЛІ БЛОКУ КНОПОК
+  instructionContainer: {
+    flexDirection: 'row', // Вишиковує кнопки в ряд
+    justifyContent: 'center',
+    gap: 16, // Відстань між кнопками
+    marginTop: 20, 
+    zIndex: 10,
+  },
+  instructionButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 30,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  returnButton: {
+    backgroundColor: '#475569', // Темно-сірий для Завершення
+  },
+  instructionText: {
+    color: Colors.white,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  // Стилі для нової кнопки "Крок назад" (Зроблена контурною, щоб не зливатися з головною дією)
+  stepBackButton: {
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    paddingVertical: 14, // Трохи менше через товщину рамки
+  },
+  stepBackText: {
+    color: Colors.primary,
+    fontSize: 20,
+    fontWeight: 'bold',
+  }
 });
