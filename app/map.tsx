@@ -72,6 +72,29 @@ const ALL_ROOMS = [
   ...B2_F3_ROOMS
 ];
 
+// --- ДОДАНО: ОНОВЛЕНИЙ Компонент-обгортка для 3D-нахилу ---
+const IsometricFloor = ({ children, level, activeFloor }: { children: React.ReactNode, level: number, activeFloor: number }) => {
+  const isActive = level === activeFloor;
+  return (
+    <View style={[
+      styles.floorWrapper,
+      {
+        transform: [
+          // Піднімаємо всю конструкцію вище (-50) і робимо відстань між поверхами 100
+          { translateY: -(level - 2) * 100 - 50 }, 
+          { rotateX: '55deg' },               
+          { rotateZ: '-45deg' },               
+          { scale: 0.8 } // Оптимальний масштаб, щоб точно влізло по висоті
+        ],
+        zIndex: level, 
+        opacity: isActive ? 1 : 0.3, 
+      }
+    ]}>
+      {children}
+    </View>
+  );
+};
+
 export default function MapScreen() {
   const params = useLocalSearchParams();
   
@@ -89,7 +112,7 @@ export default function MapScreen() {
   // Стан для "пам'яті" про те, звідки ми починали маршрут
   const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
 
-  // ДОДАНО: Стек історії для кнопки "Назад" (запам'ятовує кожен крок маршруту)
+  // Стек історії для кнопки "Назад" (запам'ятовує кожен крок маршруту)
   const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
 
   useEffect(() => {
@@ -236,7 +259,7 @@ export default function MapScreen() {
     }
   };
 
-  // ДОДАНО: Крок НАЗАД (повертає на попередній етап маршруту)
+  // Крок НАЗАД (повертає на попередній етап маршруту)
   const handleStepBack = () => {
     if (routeHistory.length === 0) return;
 
@@ -378,24 +401,82 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* КАРТА */}
-      <View style={styles.mapArea}>
-        <MapCanvas 
-          rooms={currentRooms}
-          kioskPosition={dynamicKioskPosition}
-          viewBox={currentViewBox}
-          wallsPath={currentWallsPath}
-          targetRoomId={targetRoomId}
-          routePath={generateRoutePathString()}
-          onRoomSelect={setTargetRoomId}
-        />
+      {/* КАРТА (3D ІЗОМЕТРІЯ) */}
+      <View style={styles.isometricContainer}>
+        {activeBuilding === 1 ? (
+          <>
+            {/* КОРПУС 1 - ПОВЕРХ 1 */}
+            <IsometricFloor level={1} activeFloor={activeFloor}>
+              <MapCanvas 
+                rooms={B1_F1_ROOMS} viewBox={B1_F1_VIEWBOX} wallsPath={B1_F1_WALLS}
+                targetRoomId={activeFloor === 1 ? targetRoomId : null}
+                routePath={activeFloor === 1 ? generateRoutePathString() : ''}
+                kioskPosition={activeFloor === 1 ? dynamicKioskPosition : {x: 0, y: 0}}
+                onRoomSelect={(id) => { setActiveFloor(1); setTargetRoomId(id); }}
+              />
+            </IsometricFloor>
+            {/* КОРПУС 1 - ПОВЕРХ 2 */}
+            <IsometricFloor level={2} activeFloor={activeFloor}>
+              <MapCanvas 
+                rooms={B1_F2_ROOMS} viewBox={B1_F2_VIEWBOX} wallsPath={B1_F2_WALLS}
+                targetRoomId={activeFloor === 2 ? targetRoomId : null}
+                routePath={activeFloor === 2 ? generateRoutePathString() : ''}
+                kioskPosition={activeFloor === 2 ? dynamicKioskPosition : {x: 0, y: 0}}
+                onRoomSelect={(id) => { setActiveFloor(2); setTargetRoomId(id); }}
+              />
+            </IsometricFloor>
+            {/* КОРПУС 1 - ПОВЕРХ 3 */}
+            <IsometricFloor level={3} activeFloor={activeFloor}>
+              <MapCanvas 
+                rooms={B1_F3_ROOMS} viewBox={B1_F3_VIEWBOX} wallsPath={B1_F3_WALLS}
+                targetRoomId={activeFloor === 3 ? targetRoomId : null}
+                routePath={activeFloor === 3 ? generateRoutePathString() : ''}
+                kioskPosition={activeFloor === 3 ? dynamicKioskPosition : {x: 0, y: 0}}
+                onRoomSelect={(id) => { setActiveFloor(3); setTargetRoomId(id); }}
+              />
+            </IsometricFloor>
+          </>
+        ) : (
+          <>
+            {/* КОРПУС 2 - ПОВЕРХ 1 */}
+            <IsometricFloor level={1} activeFloor={activeFloor}>
+              <MapCanvas 
+                rooms={B2_F1_ROOMS} viewBox={B2_F1_VIEWBOX} wallsPath={B2_F1_WALLS}
+                targetRoomId={activeFloor === 1 ? targetRoomId : null}
+                routePath={activeFloor === 1 ? generateRoutePathString() : ''}
+                kioskPosition={activeFloor === 1 ? dynamicKioskPosition : {x: 0, y: 0}}
+                onRoomSelect={(id) => { setActiveFloor(1); setTargetRoomId(id); }}
+              />
+            </IsometricFloor>
+            {/* КОРПУС 2 - ПОВЕРХ 2 */}
+            <IsometricFloor level={2} activeFloor={activeFloor}>
+              <MapCanvas 
+                rooms={B2_F2_ROOMS} viewBox={B2_F2_VIEWBOX} wallsPath={B2_F2_WALLS}
+                targetRoomId={activeFloor === 2 ? targetRoomId : null}
+                routePath={activeFloor === 2 ? generateRoutePathString() : ''}
+                kioskPosition={activeFloor === 2 ? dynamicKioskPosition : {x: 0, y: 0}}
+                onRoomSelect={(id) => { setActiveFloor(2); setTargetRoomId(id); }}
+              />
+            </IsometricFloor>
+            {/* КОРПУС 2 - ПОВЕРХ 3 */}
+            <IsometricFloor level={3} activeFloor={activeFloor}>
+              <MapCanvas 
+                rooms={B2_F3_ROOMS} viewBox={B2_F3_VIEWBOX} wallsPath={B2_F3_WALLS}
+                targetRoomId={activeFloor === 3 ? targetRoomId : null}
+                routePath={activeFloor === 3 ? generateRoutePathString() : ''}
+                kioskPosition={activeFloor === 3 ? dynamicKioskPosition : {x: 0, y: 0}}
+                onRoomSelect={(id) => { setActiveFloor(3); setTargetRoomId(id); }}
+              />
+            </IsometricFloor>
+          </>
+        )}
       </View>
 
       {/* БЛОК КНОПОК НАВІГАЦІЇ (ПІД КАРТОЮ) */}
       {(routeInfo?.isMultiFloor || routeInfo?.isMultiBuilding || targetRoomId) && (
         <View style={styles.instructionContainer}>
             
-            {/* ДОДАНО: Кнопка Назад (з'являється тільки якщо є історія кроків) */}
+            {/* Кнопка Назад (з'являється тільки якщо є історія кроків) */}
             {routeHistory.length > 0 && (
                 <TouchableOpacity style={[styles.instructionButton, styles.stepBackButton]} onPress={handleStepBack}>
                     <Text style={styles.stepBackText}>⬅ Крок назад</Text>
@@ -472,13 +553,35 @@ const styles = StyleSheet.create({
   tabButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textSecondary },
   tabButtonTextActive: { color: Colors.primary },
   
-  mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10, backgroundColor: Colors.white, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
+  // --- ДОДАНО: ОНОВЛЕНІ Стилі для 3D контейнера ---
+  isometricContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginTop: 10, 
+    backgroundColor: '#F8FAFC', 
+    borderRadius: 24, 
+    overflow: 'hidden', 
+    borderWidth: 2, 
+    borderColor: '#E2E8F0', 
+    zIndex: 1, 
+    position: 'relative',
+    minHeight: 750, // Трохи збільшили висоту, щоб точно помістилося
+  },
+  // --- ДОДАНО: ОНОВЛЕНІ Стилі для обгортки поверху ---
+  floorWrapper: {
+    position: 'absolute',
+    width: 1000, 
+    height: 500, 
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   
   // ОНОВЛЕНІ СТИЛІ БЛОКУ КНОПОК
   instructionContainer: {
-    flexDirection: 'row', // Вишиковує кнопки в ряд
+    flexDirection: 'row', 
     justifyContent: 'center',
-    gap: 16, // Відстань між кнопками
+    gap: 16, 
     marginTop: 20, 
     zIndex: 10,
   },
@@ -494,19 +597,19 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   returnButton: {
-    backgroundColor: '#475569', // Темно-сірий для Завершення
+    backgroundColor: '#475569', 
   },
   instructionText: {
     color: Colors.white,
     fontSize: 20,
     fontWeight: 'bold',
   },
-  // Стилі для нової кнопки "Крок назад" (Зроблена контурною, щоб не зливатися з головною дією)
+  // Стилі для нової кнопки "Крок назад"
   stepBackButton: {
     backgroundColor: Colors.white,
     borderWidth: 2,
     borderColor: Colors.primary,
-    paddingVertical: 14, // Трохи менше через товщину рамки
+    paddingVertical: 14, 
   },
   stepBackText: {
     color: Colors.primary,
