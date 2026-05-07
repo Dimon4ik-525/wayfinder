@@ -411,7 +411,7 @@ export default function MapScreen() {
             ) : (
                 // Сіра кнопка завершення (замість неї тепер фінальна дія)
                 <TouchableOpacity style={[styles.instructionButton, styles.returnButton]} onPress={handleResetRoute}>
-                    <Text style={styles.instructionText}>🏠 Завершити маршрут</Text>
+                    <Text style={styles.instructionText}> Завершити маршрут</Text>
                 </TouchableOpacity>
             )}
             
