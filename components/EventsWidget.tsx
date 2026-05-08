@@ -1,36 +1,89 @@
 // components/EventsWidget.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { fetchUpcomingEvents, CollegeEvent } from '../utils/eventsApi';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { fetchUpcomingEvents } from '../utils/eventsApi';
 
 export default function EventsWidget() {
-  const [events, setEvents] = useState<CollegeEvent[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
+
+  // 🔥 Стан для автоматичної ширини слайду (за замовчуванням 250, але миттєво оновиться)
+  const [slideWidth, setSlideWidth] = useState(250);
 
   useEffect(() => {
     const loadEvents = async () => {
       setLoading(true);
-      const data = await fetchUpcomingEvents();
-      setEvents(data);
+      try {
+        const data = await fetchUpcomingEvents();
+        setEvents(data ? data.slice(0, 10) : []);
+      } catch (error) {
+        console.error('Помилка у віджеті:', error);
+        setEvents([]);
+      }
       setLoading(false);
     };
     loadEvents();
   }, []);
 
-  // Красиве форматування дати (напр. "16 Лют, 15:15")
-  const formatEventDate = (date: Date) => {
-    const months = ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру'];
+  const formatEventDate = (dateString: string | undefined, isAllDay?: boolean) => {
+    if (!dateString) return 'Невідома дата';
+    const validDateString = dateString.replace(' ', 'T');
+    const date = new Date(validDateString);
+    if (isNaN(date.getTime())) return 'Невідома дата';
+
+    // Повні назви місяців!
+    const months = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
     const day = date.getDate();
     const month = months[date.getMonth()];
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     
-    // Якщо час 00:00, значить це подія на весь день
-    if (hours === '00' && minutes === '00') {
-      return `${day} ${month}`;
+    if (isAllDay || (hours === '00' && minutes === '00') || (hours === '08' && minutes === '00')) {
+      return `${day} ${month}`; 
     }
     return `${day} ${month}, ${hours}:${minutes}`;
   };
+
+  const getEventTitle = (event: any) => {
+    if (typeof event.title === 'string') return event.title;
+    if (event.title && event.title.rendered) return event.title.rendered;
+    return 'Захід коледжу';
+  };
+
+  const groupedEvents = [];
+  for (let i = 0; i < events.length; i += 2) {
+    groupedEvents.push(events.slice(i, i + 2));
+  }
+
+  const handleNext = () => {
+    if (currentIndex < groupedEvents.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex - 1, animated: true });
+    }
+  };
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems && viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index);
+    }
+  }).current;
+  
+  const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
+
+  // Підказуємо списку точні розміри, щоб він знав, як далеко гортати
+  const getItemLayout = (_: any, index: number) => ({
+    length: slideWidth,
+    offset: slideWidth * index,
+    index,
+  });
 
   return (
     <View style={styles.widgetContainer}>
@@ -45,19 +98,64 @@ export default function EventsWidget() {
           <Text style={styles.emptyText}>Поки немає анонсів</Text>
         </View>
       ) : (
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {events.map((event) => (
-            <View key={event.id} style={styles.eventCard}>
-              <Text style={styles.eventDate}>{formatEventDate(event.startDate)}</Text>
-              <Text style={styles.eventTitle} numberOfLines={3}>
-                {event.title}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
+        <View>
+          {/* 🔥 onLayout вимірює ширину цього контейнера і записує в slideWidth */}
+          <View 
+            style={styles.carouselContainer}
+            onLayout={(e) => setSlideWidth(e.nativeEvent.layout.width)}
+          >
+            
+            {currentIndex > 0 && (
+              <TouchableOpacity style={[styles.arrowButton, styles.leftArrow]} onPress={handlePrev}>
+                <Text style={styles.arrowText}>{'<'}</Text>
+              </TouchableOpacity>
+            )}
+
+            <FlatList 
+              ref={flatListRef}
+              data={groupedEvents}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={slideWidth} // Гортаємо рівно на одну ширину контейнера
+              snapToAlignment="center"
+              decelerationRate="fast"
+              getItemLayout={getItemLayout}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewConfigRef}
+              keyExtractor={(_, index) => index.toString()}
+              renderItem={({ item: group }) => (
+                // Кожна вкладка тепер має ширину slideWidth (100% доступного місця)
+                <View style={{ width: slideWidth, paddingHorizontal: 4, gap: 10 }}>
+                  {group.map((event: any, index: number) => (
+                    <View key={event.id || index} style={styles.eventCard}>
+                      <Text style={styles.eventDate}>
+                        {formatEventDate(event.start_date || event.startDate, event.all_day)}
+                      </Text>
+                      <Text style={styles.eventTitle} numberOfLines={3}>
+                        {getEventTitle(event)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            />
+
+            {currentIndex < groupedEvents.length - 1 && (
+              <TouchableOpacity style={[styles.arrowButton, styles.rightArrow]} onPress={handleNext}>
+                <Text style={styles.arrowText}>{'>'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.dotsContainer}>
+            {groupedEvents.map((_, index) => (
+              <View 
+                key={index} 
+                style={[styles.dot, currentIndex === index && styles.activeDot]} 
+              />
+            ))}
+          </View>
+        </View>
       )}
     </View>
   );
@@ -65,7 +163,6 @@ export default function EventsWidget() {
 
 const styles = StyleSheet.create({
   widgetContainer: {
-    flex: 1, // Займе весь вільний простір між меню і годинником!
     width: '100%',
     paddingHorizontal: 20,
     marginTop: 20,
@@ -79,16 +176,17 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  scrollContent: {
-    paddingBottom: 10,
-    gap: 10,
+  carouselContainer: {
+    position: 'relative',
+    justifyContent: 'center',
   },
   eventCard: {
-    backgroundColor: '#334155', // Трохи світліший за фон сайдбару
+    width: '100%', 
+    backgroundColor: '#334155',
     padding: 12,
     borderRadius: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#3B82F6', // Синя смужка зліва для стилю
+    borderLeftColor: '#3B82F6', 
   },
   eventDate: {
     color: '#3B82F6',
@@ -102,7 +200,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   center: {
-    flex: 1,
+    height: 100,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -110,5 +208,48 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  arrowButton: {
+    position: 'absolute',
+    zIndex: 10,
+    backgroundColor: 'rgba(30, 41, 59, 0.9)', 
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#475569',
+    top: '50%',
+    marginTop: -15, 
+  },
+  leftArrow: {
+    left: -10, 
+  },
+  rightArrow: {
+    right: -10, // Притиснув праву стрілочку ближче до краю, щоб виглядало симетрично
+  },
+  arrowText: {
+    color: '#94A3B8',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2, 
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 15,
+    gap: 6, 
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#475569', 
+  },
+  activeDot: {
+    backgroundColor: '#3B82F6', 
+    width: 16, 
   }
 });
