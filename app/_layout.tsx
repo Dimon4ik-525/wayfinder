@@ -111,7 +111,6 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   
-  // 👇 ЗМІНЕНО: Прибрали flex: 1, щоб меню займало рівно стільки місця, скільки треба
   menuContainer: { width: '100%', paddingHorizontal: 20, marginTop: 40 },
   
   menuButton: { paddingVertical: 16, paddingHorizontal: 20, borderRadius: 12, marginBottom: 10, flexDirection: 'row', alignItems: 'center' },

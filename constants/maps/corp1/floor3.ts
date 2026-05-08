@@ -9,7 +9,7 @@ export const ROOMS = [
 
 // Точки старту ("ВИ ТУТ") — масив для гнучкості
 export const START_POINTS = [
-  { id: 'stairs_main', label: 'Праві сходи', x: 3407, y: 620 }
+  { id: 'stairs_main_b1', label: 'Праві сходи', x: 3407, y: 620 }
 ];
 
 export const VIEW_BOX = "0 0 3671 802";
@@ -21,7 +21,7 @@ export const WALLS_TRANSFORM = "";
 
 export const NODES = [
   // Точка старту 
-  { id: 'stairs_main', x: 3407, y: 620 },
+  { id: 'stairs_main_b1', x: 3407, y: 620 },
 
   // Опорні точки (перехрестя) в коридорах (Вісь Y = 620)
   { id: 'c_start', x: 3250, y: 620 },     
@@ -36,7 +36,7 @@ export const NODES = [
 ];
 
 export const EDGES = [
-  { from: 'stairs_main', to: 'c_start' },
+  { from: 'stairs_main_b1', to: 'c_start' },
 
   { from: 'c_start', to: 'c_lab' },
   { from: 'c_lab', to: 'c_2' },

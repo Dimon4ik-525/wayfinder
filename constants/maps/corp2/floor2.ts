@@ -15,7 +15,7 @@ export const ROOMS = [
 
 // Точка старту ("ВИ ТУТ") — Верхні сходи (Вхід)
 export const START_POINTS = [ 
-  {id: 'stairs_main', x: 1135, y: 470 },
+  {id: 'stairs_main_b2', x: 1135, y: 470 },
 ]
 export const VIEW_BOX = "0 0 3750 1546";
 
@@ -28,7 +28,7 @@ export const WALLS_TRANSFORM = "";
 
 export const NODES = [
   // Точка старту (Сходи)
-  { id: 'stairs_main', x: 1135, y: 440 },
+  { id: 'stairs_main_b2', x: 1135, y: 440 },
 
   // Опорні точки (перехрестя) в коридорах для побудови прямих кутів 90 градусів
   { id: 'c_drop_21', x: 1135, y: 700 }, // Навпроти 21-го
@@ -51,7 +51,7 @@ export const NODES = [
 export const EDGES = [
   
   // центр / 21, 22, 23
-  { from: 'stairs_main', to: 'c_drop_21' },
+  { from: 'stairs_main_b2', to: 'c_drop_21' },
   { from: 'c_drop_21', to: 'c_cross_main' },
   { from: 'c_cross_main', to: 'c_drop_22' },
   { from: 'c_cross_main', to: 'c_mid_23' },

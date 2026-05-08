@@ -1,34 +1,21 @@
 // utils/eventsApi.ts
 
-export interface CollegeEvent {
-  id: number;
-  title: string;
-  startDate: Date;
-}
+// ВСТАВ СЮДИ СВОЄ ПОВНЕ ПОСИЛАННЯ ВІД VERCEL!
+const PROXY_URL = 'https://college-qw5bz45ci-dimon4ik-projects.vercel.app/api/events'; 
 
-export const fetchUpcomingEvents = async (): Promise<CollegeEvent[]> => {
-  // ТИМЧАСОВА ЗАГЛУШКА (Mock data)
-  // Використовуємо її, поки сервер коледжу знімає блок 429 з твоєї IP-адреси
-  
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { 
-          id: 1, 
-          title: 'Засідання гуртка "Web-програмування та дизайн"', 
-          startDate: new Date('2026-05-05T15:15:00') 
-        },
-        { 
-          id: 2, 
-          title: 'Олімпіада з вищої математики (1-2 курс)', 
-          startDate: new Date('2026-05-07T10:00:00') 
-        },
-        { 
-          id: 3, 
-          title: 'Зустріч з ІТ-компаніями міста (День кар\'єри)', 
-          startDate: new Date('2026-05-12T12:30:00') 
-        }
-      ]);
-    }, 500); // Імітуємо затримку завантаження пів секунди
-  });
+export const fetchUpcomingEvents = async () => {
+  try {
+    const response = await fetch(PROXY_URL);
+
+    if (!response.ok) {
+      throw new Error(`Помилка API: HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.events || [];
+
+  } catch (error) {
+    console.error('Помилка завантаження заходів:', error);
+    return [];
+  }
 };
