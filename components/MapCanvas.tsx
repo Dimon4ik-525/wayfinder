@@ -11,7 +11,7 @@ interface MapCanvasProps {
   wallsPath: string;
   targetRoomId: string | null;
   routePath: string;
-  onRoomSelect: (roomId: string) => void;
+  onRoomSelect: (roomId: string | null) => void; // 🔥 Дозволяємо передавати null
 }
 
 export default function MapCanvas({ 
@@ -51,6 +51,17 @@ export default function MapCanvas({
     }
   };
 
+  // 🔥 Додали функцію-обгортку для кліку по кімнаті
+  const handleRoomPress = (roomId: string) => {
+    if (targetRoomId === roomId) {
+      // Якщо клікнули на ВЖЕ обрану кімнату - знімаємо виділення (скасовуємо маршрут)
+      onRoomSelect(null);
+    } else {
+      // Якщо клікнули на нову - обираємо її
+      onRoomSelect(roomId);
+    }
+  };
+
   return (
     <View style={styles.wrapper}>
       <ReactNativeZoomableView
@@ -78,7 +89,8 @@ export default function MapCanvas({
             const startY = room.y + (room.height / 2) - ((lines.length - 1) * lineHeight / 2) + 20;
 
             return (
-              <G key={room.id} onPress={() => onRoomSelect(room.id)}>
+              // 🔥 Використовуємо нову функцію обробки кліку
+              <G key={room.id} onPress={() => handleRoomPress(room.id)}>
                 <Rect 
                   x={room.x} y={room.y} width={room.width} height={room.height} 
                   fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 

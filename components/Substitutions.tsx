@@ -1,46 +1,108 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { useRouter } from 'expo-router'; 
+import { Colors } from '../constants/theme';
 
-export default function Substitutions() {
+export default function Substitutions({ data }: { data: any[] }) {
+  const router = useRouter(); 
+
+  if (!data || data.length === 0) return null;
+
+  const handleMapNavigation = (room: string) => {
+    if (!room || room === '—') return;
+
+    const lowerRoom = room.toLowerCase();
+    
+    // Перевірка на кабінети в розробці
+    if (lowerRoom.includes('с/к') || lowerRoom.includes('спортзал') || lowerRoom.includes('актова') || lowerRoom.includes('тир')) {
+      if (Platform.OS === 'web') {
+        window.alert("В розробці 🛠\n\nЦей об'єкт ще не додано на мапу. Працюємо над цим!");
+      } else {
+        Alert.alert("В розробці 🛠", "Цей об'єкт ще не додано на мапу. Працюємо над цим!");
+      }
+      return; 
+    }
+
+    router.push({
+      pathname: '/map', 
+      params: { room: room }
+    });
+  };
+
   return (
     <View style={styles.substitutionsBox}>
-      <Text style={styles.subsTitle}>Заміни на сьогодні (2)</Text>
+      <Text style={styles.subsTitle}>Заміни на цей день ({data.length})</Text>
       
       {/* Шапка таблиці */}
       <View style={styles.subsHeader}>
         <Text style={[styles.subsColumnText, { width: 40 }]}>Пара</Text>
         <Text style={[styles.subsColumnText, { flex: 1 }]}>Предмет</Text>
         <Text style={[styles.subsColumnText, { width: 140 }]}>Викладач</Text>
-        <Text style={[styles.subsColumnText, { width: 90 }]}>Кабінет</Text>
-        <Text style={[styles.subsColumnText, { width: 90 }]}>Тип</Text>
+        <Text style={[styles.subsColumnText, { width: 60 }]}>Каб.</Text>
+        <Text style={[styles.subsColumnText, { width: 80, textAlign: 'center' }]}>Тип</Text>
+        <Text style={[styles.subsColumnText, { width: 100, textAlign: 'center' }]}>Дія</Text> 
       </View>
 
-      {/* Перша заміна */}
-      <View style={styles.subsRow}>
-        <Text style={[styles.subsRowTextBold, { width: 40 }]}>3</Text>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.subsRowTextBold, { color: '#10B981' }]}>Основи баз даних</Text>
-          <Text style={styles.subsRowSubtext} numberOfLines={1}> (Замість: Рівняння та методи...)</Text>
-        </View>
-        <Text style={[styles.subsRowText, { width: 140 }]}>Сидоренко В.В.</Text>
-        <Text style={[styles.subsRowTextBold, { width: 90 }]}>12</Text>
-        <View style={[styles.subsBadge, { backgroundColor: '#FEF3C7' }]}>
-          <Text style={{ color: '#D97706', fontSize: 11, fontWeight: 'bold' }}>Заміна</Text>
-        </View>
-      </View>
+      {/* Рендеримо реальні заміни */}
+      {data.map((sub, index) => {
+        const room = sub.cabinet || sub.room || '—'; 
+        const lessonNum = sub.lesson_name || sub.lesson_number || '-';
+        const typeText = sub.change_type || sub.type || 'Заміна';
+        
+        const isCancelled = sub.is_cancelled === true || typeText.toLowerCase() === 'скасовано';
 
-      {/* Друга заміна */}
-      <View style={[styles.subsRow, { borderBottomWidth: 0 }]}>
-        <Text style={[styles.subsRowTextBold, { width: 40 }]}>5</Text>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={[styles.subsRowTextBold, { color: '#10B981' }]}>Самостійна робота</Text>
-          <Text style={styles.subsRowSubtext} numberOfLines={1}> (Замість: Основи кібербезпеки)</Text>
-        </View>
-        <Text style={[styles.subsRowText, { width: 140 }]}>—</Text>
-        <Text style={[styles.subsRowTextBold, { width: 90 }]}>Б-ка</Text>
-        <View style={[styles.subsBadge, { backgroundColor: '#E0E7FF' }]}>
-          <Text style={{ color: '#4338CA', fontSize: 11, fontWeight: 'bold' }}>Вичитка</Text>
-        </View>
-      </View>
+        return (
+          <View key={index} style={[styles.subsRow, index === data.length - 1 && { borderBottomWidth: 0 }]}>
+            
+            <Text style={[styles.subsRowTextBold, { width: 40 }]}>
+              {lessonNum}
+            </Text>
+            
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={[styles.subsRowTextBold, { color: isCancelled ? Colors.error : '#10B981' }]}>
+                {sub.subject || sub.discipline || 'Заміна'}
+              </Text>
+              {sub.replaced_subject && (
+                 <Text style={styles.subsRowSubtext} numberOfLines={1}> (Замість: {sub.replaced_subject})</Text>
+              )}
+            </View>
+            
+            <Text style={[styles.subsRowText, { width: 140 }]}>
+              {sub.teacher || '—'}
+            </Text>
+            
+            <Text style={[styles.subsRowTextBold, { width: 60 }]}>
+              {room}
+            </Text>
+            
+            {/* Відцентрований блок типу заміни */}
+            <View style={{ width: 80, alignItems: 'center' }}>
+              <View style={[styles.subsBadge, { backgroundColor: isCancelled ? '#FEE2E2' : '#FEF3C7' }]}>
+                <Text style={{ color: isCancelled ? '#DC2626' : '#D97706', fontSize: 11, fontWeight: 'bold', textAlign: 'center' }}>
+                  {typeText}
+                </Text>
+              </View>
+            </View>
+
+            {/* Блок дії (Кнопка в 1 рядок) */}
+            <View style={{ width: 100, alignItems: 'center' }}>
+              <TouchableOpacity 
+                style={[styles.routeButton, room === '—' && styles.routeButtonDisabled]} 
+                disabled={room === '—'}
+                onPress={() => handleMapNavigation(room)} 
+                activeOpacity={0.8}
+              >
+                <Text 
+                  style={[styles.routeButtonText, room === '—' && { color: '#9CA3AF' }]}
+                  numberOfLines={1} 
+                >
+                  Як пройти?
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -49,17 +111,36 @@ const styles = StyleSheet.create({
   substitutionsBox: {
     backgroundColor: '#FFFBEB',
     borderRadius: 12, 
-    paddingVertical: 10, // Дуже компактні вертикальні відступи
+    paddingVertical: 10, 
     paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: '#FDE68A',
+    marginBottom: 15,
   },
   subsTitle: { fontSize: 15, fontWeight: 'bold', color: '#D97706', marginBottom: 8 }, 
   subsHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#FDE68A', paddingBottom: 4, marginBottom: 4 },
   subsColumnText: { fontSize: 12, color: '#9CA3AF', fontWeight: 'bold' },
-  subsRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#FDE68A', paddingVertical: 6 }, // Рядки стали вужчими
+  subsRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#FDE68A', paddingVertical: 8 }, 
   subsRowText: { fontSize: 14, color: '#4B5563' },
   subsRowTextBold: { fontSize: 14, fontWeight: 'bold', color: '#1F2937' },
   subsRowSubtext: { fontSize: 12, color: '#9CA3AF', flexShrink: 1 }, 
-  subsBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100, width: 80, alignItems: 'center' },
+  subsBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100, width: 70, alignItems: 'center', justifyContent: 'center' },
+  
+  // 🔥 Виправлені стилі кнопки для замін
+  routeButton: { 
+    backgroundColor: Colors.primary, 
+    paddingHorizontal: 12, // Зменшили відступ, щоб текст вліз
+    paddingVertical: 8, 
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  routeButtonDisabled: { 
+    backgroundColor: '#E2E8F0' 
+  },
+  routeButtonText: { 
+    color: Colors.white, 
+    fontSize: 12, // Трохи зменшили шрифт, щоб було акуратно в один ряд
+    fontWeight: 'bold' 
+  },
 });

@@ -3,10 +3,8 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView
 import { useState, useEffect } from 'react';
 import { Colors } from '../constants/theme';
 
-// Імпортуємо наш компонент-малювальник
 import MapCanvas from '../components/MapCanvas';
 
-// Приховуємо спливаючі попередження на екрані
 LogBox.ignoreLogs([
   'Unknown event handler property `onStartShouldSetResponder`',
   'Unknown event handler property `onResponderTerminationRequest`',
@@ -16,7 +14,6 @@ LogBox.ignoreLogs([
   'Unknown event handler property `onResponderTerminate`',
 ]);
 
-// ГЛУШНИК ДЛЯ КОНСОЛІ БРАУЗЕРА (щоб там було чисто)
 const originalConsoleError = console.error;
 console.error = (...args) => {
   if (typeof args[0] === 'string' && args[0].includes('Unknown event handler property')) {
@@ -25,16 +22,13 @@ console.error = (...args) => {
   originalConsoleError(...args);
 };
 
-// Імпорт нової функції багатоповерхової та багаторкорпусної навігації
 import { findShortestPath, buildGlobalRoute, RouteStepInfo } from '../utils/navigation';
 
-// --- НОВИЙ ОБ'ЄДНАНИЙ 1 ПОВЕРХ ---
 import { 
   ROOMS as COMBINED_F1_ROOMS, VIEW_BOX as COMBINED_F1_VIEWBOX, 
   WALLS_PATH as COMBINED_F1_WALLS, NODES as COMBINED_F1_NODES, EDGES as COMBINED_F1_EDGES, START_POINTS as COMBINED_F1_START_POINTS, KIOSK_POSITION as COMBINED_F1_KIOSK_POSITION
 } from '../constants/maps/combined_floor1';
 
-// --- КОРПУС 1 ---
 import { 
   ROOMS as B1_F2_ROOMS, VIEW_BOX as B1_F2_VIEWBOX, 
   WALLS_PATH as B1_F2_WALLS, NODES as B1_F2_NODES, EDGES as B1_F2_EDGES, START_POINTS as B1_F2_START_POINTS
@@ -45,8 +39,6 @@ import {
   WALLS_PATH as B1_F3_WALLS, NODES as B1_F3_NODES, EDGES as B1_F3_EDGES, START_POINTS as B1_F3_START_POINTS
 } from '../constants/maps/corp1/floor3'; 
 
-
-// --- КОРПУС 2 ---
 import { 
   ROOMS as B2_F2_ROOMS, VIEW_BOX as B2_F2_VIEWBOX, 
   WALLS_PATH as B2_F2_WALLS, NODES as B2_F2_NODES, EDGES as B2_F2_EDGES, START_POINTS as B2_F2_START_POINTS
@@ -57,8 +49,6 @@ import {
   WALLS_PATH as B2_F3_WALLS, NODES as B2_F3_NODES, EDGES as B2_F3_EDGES, START_POINTS as B2_F3_START_POINTS
 } from '../constants/maps/corp2/floor3'; 
 
-
-// Збираємо всі кімнати в одну глобальну базу для пошуку
 const ALL_ROOMS = [
   ...COMBINED_F1_ROOMS,
   ...B1_F2_ROOMS,
@@ -66,6 +56,8 @@ const ALL_ROOMS = [
   ...B2_F2_ROOMS,
   ...B2_F3_ROOMS
 ];
+
+let globalSavedStartId = 'start_main';
 
 export default function MapScreen() {
   const params = useLocalSearchParams();
@@ -75,16 +67,11 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [now, setNow] = useState(new Date());
   
-  const [targetRoomId, setTargetRoomId] = useState<string | null>((params.room as string) || null);
-  const [activeStartId, setActiveStartId] = useState('start_main');
+  const [targetRoomId, setTargetRoomId] = useState<string | null>(null);
+  const [activeStartId, setActiveStartId] = useState(globalSavedStartId);
 
-  // Стан для зберігання інструкцій маршруту
   const [routeInfo, setRouteInfo] = useState<RouteStepInfo | null>(null);
-
-  // Стан для "пам'яті" про те, звідки ми починали маршрут
   const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
-
-  // Стек історії для кнопки "Назад" (запам'ятовує кожен крок маршруту)
   const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
 
   useEffect(() => {
@@ -92,37 +79,91 @@ export default function MapScreen() {
     return () => clearInterval(timer);
   }, []);
 
+  const changeStartPoint = (id: string) => {
+    setActiveStartId(id);
+    globalSavedStartId = id; 
+  };
+
+  // 🔥 ВИПРАВЛЕНО: Пріоритетний пошук точного збігу для уникнення плутанини (напр. 3 та 13)
+  useEffect(() => {
+    if (params.room) {
+      const roomParam = params.room as string;
+      
+      // 1. Шукаємо точний збіг по ID або Лейблу
+      const exactMatch = ALL_ROOMS.find(r => 
+        r.id === roomParam || 
+        r.label.toLowerCase() === roomParam.toLowerCase()
+      );
+
+      // 2. Якщо точного немає, шукаємо входження підрядка
+      const foundRoom = exactMatch || ALL_ROOMS.find(r => 
+        r.label.toLowerCase().includes(roomParam.toLowerCase())
+      );
+
+      if (foundRoom) {
+        if (!initialRouteConfig) {
+          setActiveBuilding(1);
+          setActiveFloor(1);
+          setActiveStartId(globalSavedStartId);
+          
+          setInitialRouteConfig({
+            building: 1,
+            floor: 1,
+            startId: globalSavedStartId
+          });
+        }
+        setTargetRoomId(foundRoom.id);
+      } else {
+        setSearchQuery(roomParam);
+      }
+    }
+  }, [params.room]);
+
   const formatDate = (date: Date) => {
     const months = ['Січня', 'Лютого', 'Березня', 'Квітня', 'Травня', 'Червня', 'Липня', 'Серпня', 'Вересня', 'Жовтня', 'Листопада', 'Грудня'];
     const days = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', "П'ятниця", 'Субота'];
     return `📅 ${date.getDate()} ${months[date.getMonth()]}, ${days[date.getDay()]}`;
   };
 
-  // ЛОГІКА ПОШУКУ
+  // 🔥 ОНОВЛЕНО: Сортування результатів пошуку (точні збіги попереду)
   const searchResults = searchQuery.trim() === '' 
     ? [] 
-    : ALL_ROOMS.filter(room => room.label.toLowerCase().includes(searchQuery.toLowerCase()));
+    : ALL_ROOMS
+        .filter(room => room.label.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => {
+          const aExact = a.label.toLowerCase() === searchQuery.toLowerCase();
+          const bExact = b.label.toLowerCase() === searchQuery.toLowerCase();
+          return aExact === bExact ? 0 : aExact ? -1 : 1;
+        });
 
   const handleSelectRoomFromSearch = (room: any) => {
-    setTargetRoomId(room.id);
-    setSearchQuery('');
-  };
-
-  // Слідкуємо за появою/зникненням цілі, щоб правильно зберігати точку повернення
-  useEffect(() => {
-    if (targetRoomId && !initialRouteConfig) {
+    if (!initialRouteConfig) {
       setInitialRouteConfig({
         building: activeBuilding,
         floor: activeFloor,
         startId: activeStartId
       });
-      setRouteHistory([]); // Очищаємо історію при новому маршруті
     }
-    if (!targetRoomId && initialRouteConfig) {
+    setTargetRoomId(room.id);
+    setSearchQuery('');
+  };
+
+  const handleRoomClick = (roomId: string | null) => {
+    if (roomId) {
+      if (!initialRouteConfig) {
+        setInitialRouteConfig({
+          building: activeBuilding,
+          floor: activeFloor,
+          startId: activeStartId
+        });
+      }
+      setTargetRoomId(roomId);
+    } else {
+      setTargetRoomId(null);
       setInitialRouteConfig(null);
-      setRouteHistory([]); // Очищаємо історію, якщо маршрут скинуто
+      setRouteHistory([]);
     }
-  }, [targetRoomId]);
+  };
 
   let currentRooms: any[] = [];
   let currentViewBox = "0 0 800 400";
@@ -131,7 +172,6 @@ export default function MapScreen() {
   let currentEdges: any[] = [];
   let currentStartPoints: any[] = []; 
 
-  // ЛОГІКА ВИБОРУ ФАЙЛУ ДЛЯ ВІДОБРАЖЕННЯ
   if (activeFloor === 1) {
     currentRooms = COMBINED_F1_ROOMS; currentViewBox = COMBINED_F1_VIEWBOX;
     currentWallsPath = COMBINED_F1_WALLS; currentNodes = COMBINED_F1_NODES; currentEdges = COMBINED_F1_EDGES; 
@@ -154,7 +194,6 @@ export default function MapScreen() {
     currentStartPoints = B2_F3_START_POINTS || [];
   }
 
-  // --- МАГІЯ СХОДІВ: ФІНАЛЬНА ЛОГІКА ПОШУКУ СТАРТУ ---
   let effectiveStartId = activeStartId;
   let dynamicKioskPosition = { x: 0, y: 0 };
 
@@ -197,7 +236,6 @@ export default function MapScreen() {
       ? activeBuilding 
       : targetRoom.building;
 
-    // ВАЖЛИВО: Визначаємо точну ціль для малювання лінії
     let actualTargetId = targetRoomId;
     if (activeFloor === 1 && targetRoom.floor > 1) {
       actualTargetId = targetRoom.building === 1 ? 'stairs_main_b1' : 'stairs_main_b2';
@@ -214,9 +252,6 @@ export default function MapScreen() {
         currentEdges
     );
 
-    // --- ПРИМУСОВИЙ МАЛЮВАЛЬНИК ---
-    // Оскільки навігатор іноді видає порожній шлях через старі константи,
-    // ми завжди розраховуємо шлях власноруч тут, використовуючи правильні дані.
     const guaranteedPath = findShortestPath(effectiveStartId, actualTargetId, currentNodes, currentEdges);
     
     if (info) {
@@ -224,9 +259,6 @@ export default function MapScreen() {
         let finalNextBuilding = info.nextBuilding;
         let finalNextFloor = info.nextFloor;
 
-        // ОПТИМІЗАЦІЯ ОБ'ЄДНАНОГО ПОВЕРХУ:
-        // Якщо ми на 1-му поверсі, а ціль в іншому корпусі нагорі,
-        // ми не робимо зайвий клік "Перейдіть в Корпус 2", а одразу ведемо на поверх!
         if (activeFloor === 1 && targetRoom.floor > 1) {
             finalInstruction = `Підніміться на ${targetRoom.floor} поверх (Корпус ${targetRoom.building}) ➔`;
             finalNextBuilding = targetRoom.building;
@@ -238,11 +270,10 @@ export default function MapScreen() {
             instruction: finalInstruction,
             nextBuilding: finalNextBuilding,
             nextFloor: finalNextFloor,
-            pathNodes: guaranteedPath // ЗАВЖДИ ПІДСТАВЛЯЄМО НАШУ ГАРАНТОВАНУ ЛІНІЮ!
+            pathNodes: guaranteedPath 
         });
     }
   }, [targetRoomId, activeBuilding, activeFloor, effectiveStartId, currentNodes, currentEdges]); 
-
 
   const generateRoutePathString = () => {
     if (!routeInfo || routeInfo.pathNodes.length === 0) return '';
@@ -255,7 +286,6 @@ export default function MapScreen() {
     return pathString;
   };
 
-  // Крок ВПЕРЕД
   const handleFloorChangeInstruction = () => {
     if (!routeInfo) return;
 
@@ -275,7 +305,6 @@ export default function MapScreen() {
     }
   };
 
-  // Крок НАЗАД
   const handleStepBack = () => {
     if (routeHistory.length === 0) return;
 
@@ -298,22 +327,19 @@ export default function MapScreen() {
     } else {
       setActiveFloor(1); 
       setActiveBuilding(1); 
-      setActiveStartId('start_main'); 
+      setActiveStartId(globalSavedStartId); 
     }
     
     setTargetRoomId(null);
     setSearchQuery('');
     setRouteInfo(null);
     setRouteHistory([]); 
+    setInitialRouteConfig(null);
   };
 
   return (
     <View style={styles.container}>
-      
-      {/* ВЕРХНЯ ПАНЕЛЬ */}
       <View style={styles.topBar}>
-        
-        {/* Блок пошуку */}
         <View style={styles.searchWrapper}>
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
@@ -326,7 +352,6 @@ export default function MapScreen() {
             />
           </View>
 
-          {/* Випадаючий список результатів */}
           {searchResults.length > 0 && (
             <View style={styles.searchResults}>
               <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 300 }}>
@@ -352,7 +377,6 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* ПАНЕЛЬ ВИБОРУ ВХОДУ */}
       {currentStartPoints && currentStartPoints.length > 1 && routeHistory.length === 0 && !targetRoomId && (
         <View style={styles.startPointsPanel}>
           <Text style={styles.startPointsLabel}>Почати маршрут від:</Text>
@@ -361,7 +385,7 @@ export default function MapScreen() {
               <TouchableOpacity
                 key={sp.id}
                 style={[styles.startBtn, effectiveStartId === sp.id && styles.startBtnActive]}
-                onPress={() => setActiveStartId(sp.id)}
+                onPress={() => changeStartPoint(sp.id)}
               >
                 <Text style={[styles.startBtnText, effectiveStartId === sp.id && styles.startBtnTextActive]}>
                   📍 {sp.label}
@@ -372,14 +396,12 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* ЗАГОЛОВОК */}
       <Text style={styles.mapTitle}>
         {activeFloor === 1 ? '1 поверх' : `Корпус ${activeBuilding}, ${activeFloor} поверх`} — <Text style={{ fontWeight: 'bold' }}>
           {targetRoomId ? `ціль: ${ALL_ROOMS.find(r => r.id === targetRoomId)?.label || 'каб. ' + targetRoomId}` : 'Оберіть кабінет'}
         </Text>
       </Text>
 
-      {/* ПАНЕЛІ КЕРУВАННЯ */}
       <View style={styles.controlPanel}>
         <View style={styles.tabSelector}>
           {[1, 2].map((building) => (
@@ -417,7 +439,6 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* КАРТА */}
       <View style={styles.mapArea}>
         <MapCanvas 
           rooms={currentRooms}
@@ -426,22 +447,18 @@ export default function MapScreen() {
           wallsPath={currentWallsPath}
           targetRoomId={targetRoomId}
           routePath={generateRoutePathString()}
-          onRoomSelect={setTargetRoomId}
+          onRoomSelect={handleRoomClick}
         />
       </View>
 
-      {/* БЛОК КНОПОК НАВІГАЦІЇ */}
       {(routeInfo?.isMultiFloor || routeInfo?.isMultiBuilding || targetRoomId) && (
         <View style={styles.instructionContainer}>
-            
-          {/* Кнопка Назад */}
           {routeHistory.length > 0 && (
               <TouchableOpacity style={[styles.instructionButton, styles.stepBackButton]} onPress={handleStepBack}>
                   <Text style={styles.stepBackText}>⬅ Крок назад</Text>
               </TouchableOpacity>
           )}
 
-          {/* Основна дія: Вперед або Завершити */}
           {routeInfo?.isMultiFloor || routeInfo?.isMultiBuilding ? (
               <TouchableOpacity style={styles.instructionButton} onPress={handleFloorChangeInstruction}>
                   <Text style={styles.instructionText}>{routeInfo.instruction}</Text>
@@ -451,10 +468,8 @@ export default function MapScreen() {
                   <Text style={styles.instructionText}> Завершити маршрут</Text>
               </TouchableOpacity>
           )}
-            
         </View>
       )}
-
     </View>
   );
 }
@@ -462,12 +477,10 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 40, backgroundColor: Colors.background },
   topBar: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20, gap: 16, zIndex: 50, elevation: 50 },
-  
   searchWrapper: { flex: 1, maxWidth: 400, zIndex: 50, elevation: 50 },
   searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   searchIcon: { fontSize: 18, marginRight: 10 },
   searchInput: { flex: 1, fontSize: 18, color: Colors.textMain, outlineStyle: 'none' } as any,
-  
   searchResults: { 
     position: 'absolute', 
     top: '100%', 
@@ -485,10 +498,8 @@ const styles = StyleSheet.create({
   searchResultItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   searchResultText: { fontSize: 18, fontWeight: 'bold', color: Colors.textMain },
   searchResultSubtext: { fontSize: 14, color: Colors.textSecondary },
-
   dateBadge: { backgroundColor: Colors.primaryGhost, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, flexShrink: 0, whiteSpace: 'nowrap' } as any,
   dateBadgeText: { fontSize: 18, fontWeight: 'bold', color: Colors.primary },
-  
   startPointsPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, backgroundColor: '#F1F5F9', padding: 12, borderRadius: 16, zIndex: 1 },
   startPointsLabel: { fontSize: 18, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 16 },
   startPointsButtons: { flexDirection: 'row', gap: 8 },
@@ -496,7 +507,6 @@ const styles = StyleSheet.create({
   startBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   startBtnText: { fontSize: 16, fontWeight: 'bold', color: Colors.textMain },
   startBtnTextActive: { color: Colors.white },
-
   mapTitle: { fontSize: 28, color: Colors.textMain, marginBottom: 20 },
   controlPanel: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, zIndex: 1 },
   tabSelector: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 12, padding: 4 },
@@ -508,9 +518,7 @@ const styles = StyleSheet.create({
   },
   tabButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textSecondary },
   tabButtonTextActive: { color: Colors.primary },
-  
   mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10, backgroundColor: Colors.white, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
-  
   instructionContainer: {
     flexDirection: 'row', 
     justifyContent: 'center',
