@@ -2,8 +2,6 @@ import { Slot, useRouter, usePathname } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Colors } from '../constants/theme'; 
-
-// 👇 ДОДАНО: імпорт нашого віджета
 import EventsWidget from '../components/EventsWidget'; 
 
 export default function RootLayout() {
@@ -31,12 +29,20 @@ export default function RootLayout() {
     return days[date.getDay()];
   };
 
+  // 🔥 Якщо ми на стартовому екрані (/), показуємо тільки його, без лівого сайдбару!
+  if (pathname === '/') {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background }}>
+        <Slot />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* ЛІВИЙ САЙДБАР */}
       <View style={styles.sidebar}>
         
-        {/* Блок з реальним логотипом */}
         <View style={styles.logoContainer}>
           <Image 
             source={require('../assets/images/logo.png')} 
@@ -49,7 +55,7 @@ export default function RootLayout() {
         <View style={styles.menuContainer}>
           <TouchableOpacity 
             style={[styles.menuButton, pathname === '/schedule' && styles.menuButtonActive]}
-            onPress={() => router.push('/schedule')}
+            onPress={() => router.replace('/schedule')} // 🔥 Замінив на replace, щоб не збирати історію свайпів
           >
             <Text style={pathname === '/schedule' ? styles.menuTextActive : styles.menuText}>
               📅 Розклад груп
@@ -58,7 +64,7 @@ export default function RootLayout() {
           
           <TouchableOpacity 
             style={[styles.menuButton, pathname === '/map' && styles.menuButtonActive]}
-            onPress={() => router.push('/map')}
+            onPress={() => router.replace('/map')}
           >
             <Text style={pathname === '/map' ? styles.menuTextActive : styles.menuText}>
               📍 Мапа корпусу
@@ -66,7 +72,6 @@ export default function RootLayout() {
           </TouchableOpacity>
         </View>
 
-        {/* 👇 ВСТАВЛЯЄМО ВІДЖЕТ ТУТ 👇 */}
         <EventsWidget />
 
         {/* ЖИВИЙ ГОДИННИК */}
@@ -78,7 +83,7 @@ export default function RootLayout() {
 
       </View>
 
-      {/* ПРАВА ЧАСТИНА */}
+      {/* ПРАВА ЧАСТИНА (Тут показується розклад або мапа) */}
       <View style={styles.mainContent}>
         <Slot /> 
       </View>
