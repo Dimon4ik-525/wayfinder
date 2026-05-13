@@ -4,7 +4,8 @@ export const ROOMS = [
   // Кабінети вздовж верхньої стіни (справа наліво)
   { id: '1', label: 'Кабінет 1', building: 1, floor: 3, x: 30, y: 30, width: 1190, height: 510 },
   { id: '2', label: 'Кабінет 2', building: 1, floor: 3, x: 1240, y: 30, width: 930, height: 510 },
-  { id: 'lab', label: 'Лабораторія', building: 1, floor: 3, x: 2435, y: 30, width: 1200, height: 510 },
+  { id: 'lab', label: 'Лабораторія', description:'Лабораторія хімічного аналізу / лабораторія фізико-хімічних методів аналізу',building: 1, floor: 3, x: 2435, y: 30, width: 1200, height: 510 },
+  { id: 'vagova', label: 'Вагова',building: 1, floor: 3, x: 2200, y: 30, width: 210, height: 510 },
 ];
 
 // Точки старту ("ВИ ТУТ") — масив для гнучкості
@@ -27,22 +28,26 @@ export const NODES = [
   { id: 'c_start', x: 3250, y: 620 },     
   { id: 'c_lab', x: 2765, y: 620 },      
   { id: 'c_2', x: 2000, y: 620 },        
-  { id: 'c_1', x: 860, y: 620 },        
+  { id: 'c_1', x: 860, y: 620 },  
+  { id: 'c_vagova', x: 2315, y: 620},      
 
   // Входи в кабінети 
   { id: 'lab', x: 2765, y: 500 },
   { id: '2', x: 2000, y: 500 },
   { id: '1', x: 860, y: 500 },
+  { id: 'vagova', x: 2315, y: 500 },
 ];
 
 export const EDGES = [
   { from: 'stairs_main_b1', to: 'c_start' },
 
   { from: 'c_start', to: 'c_lab' },
-  { from: 'c_lab', to: 'c_2' },
+  { from: 'c_lab', to: 'c_vagova'},
+  { from: 'c_vagova', to: 'c_2' },
   { from: 'c_2', to: 'c_1' },
 
   { from: 'c_lab', to: 'lab' },
   { from: 'c_2', to: '2' },
   { from: 'c_1', to: '1' },
+  { from: 'c_vagova', to: 'vagova'},
 ];

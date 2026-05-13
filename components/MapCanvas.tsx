@@ -11,7 +11,7 @@ interface MapCanvasProps {
   wallsPath: string;
   targetRoomId: string | null;
   routePath: string;
-  onRoomSelect: (roomId: string | null) => void; // 🔥 Дозволяємо передавати null
+  onRoomSelect: (roomId: string | null) => void;
 }
 
 export default function MapCanvas({ 
@@ -51,13 +51,10 @@ export default function MapCanvas({
     }
   };
 
-  // 🔥 Додали функцію-обгортку для кліку по кімнаті
   const handleRoomPress = (roomId: string) => {
     if (targetRoomId === roomId) {
-      // Якщо клікнули на ВЖЕ обрану кімнату - знімаємо виділення (скасовуємо маршрут)
       onRoomSelect(null);
     } else {
-      // Якщо клікнули на нову - обираємо її
       onRoomSelect(roomId);
     }
   };
@@ -89,7 +86,6 @@ export default function MapCanvas({
             const startY = room.y + (room.height / 2) - ((lines.length - 1) * lineHeight / 2) + 20;
 
             return (
-              // 🔥 Використовуємо нову функцію обробки кліку
               <G key={room.id} onPress={() => handleRoomPress(room.id)}>
                 <Rect 
                   x={room.x} y={room.y} width={room.width} height={room.height} 
@@ -97,10 +93,14 @@ export default function MapCanvas({
                   stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
                 />
                 
+                {/* 🔥 ОНОВЛЕНО: Додано логіку повороту тексту */}
                 <SvgText 
                   x={room.x + (room.width / 2)} y={startY} 
                   fill={isActive ? Colors.white : Colors.textMain} 
                   fontSize={45} fontWeight="bold" textAnchor="middle"
+                  rotation={room.rotateText ? -90 : 0}
+                  originX={room.x + (room.width / 2)}
+                  originY={room.y + (room.height / 2)}
                 >
                   {lines.map((line: string, index: number) => (
                     <TSpan key={index} x={room.x + (room.width / 2)} dy={index === 0 ? 0 : lineHeight}>
