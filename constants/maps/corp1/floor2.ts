@@ -9,6 +9,7 @@ export const ROOMS = [
   { id: '6', label: 'Кабінет 6', building: 1, floor: 2, x: 2040, y: 30, width: 730, height: 305 },
 
   // Вертикальне крило - ЛІВА сторона (зверху вниз)
+  { id: 'wc_women', label: 'WC\n ', description: 'Жіночий туалет', building: 1, floor: 2, x: 1715, y: 760, width: 220, height: 165 },
   { id: '11', label: 'Кабінет 11', building: 1, floor: 2, x: 1715, y: 930, width: 370, height: 660 },
   { id: '10', label: 'Кабінет 10', building: 1, floor: 2, x: 1715, y: 1775, width: 370, height: 540 },
 
@@ -45,6 +46,7 @@ export const NODES = [
   { id: 'c_3', x: 480, y: 450 },
 
   // --- ВЕРТИКАЛЬНИЙ КОРИДОР (Праве крило, Вісь X = 2180) ---
+  { id: 'c_wc_women', x: 2180, y: 890 },
   { id: 'c_7', x: 2180, y: 835 },
   { id: 'c_11', x: 2180, y: 1005 },
   { id: 'c_8', x: 2180, y: 1665 },
@@ -65,6 +67,7 @@ export const NODES = [
   { id: '9', x: 2410, y: 2335 },
 
   // Ліві кабінети вертикального крила 
+  { id: 'wc_women', x: 1900, y: 890 },
   { id: '11', x: 1900, y: 1005 },
   { id: '10', x: 1900, y: 1855 },
 ];
@@ -85,6 +88,8 @@ export const EDGES = [
 
   // Маршрут по вертикальному коридору вниз
   { from: 'c_cross', to: 'c_7' }, { from: 'c_7', to: '7' }, // каб 7
+
+  { from: 'c_7', to: 'c_wc_women' }, { from: 'c_wc_women', to: 'wc_women' },
 
   { from: 'c_7', to: 'c_11' }, { from: 'c_11', to: '11' }, // каб 11
 

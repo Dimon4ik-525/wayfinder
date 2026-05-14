@@ -1,25 +1,47 @@
 import { useLocalSearchParams } from 'expo-router';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Colors } from '../constants/theme';
 
 import MapCanvas from '../components/MapCanvas';
 
+// 🔥 Глушимо візуальні сповіщення на екрані
 LogBox.ignoreLogs([
-  'Unknown event handler property `onStartShouldSetResponder`',
-  'Unknown event handler property `onResponderTerminationRequest`',
-  'Unknown event handler property `onResponderGrant`',
-  'Unknown event handler property `onResponderMove`',
-  'Unknown event handler property `onResponderRelease`',
-  'Unknown event handler property `onResponderTerminate`',
+  'Unknown event handler property',
+  'Invalid DOM property',
+  '"shadow*" style props are deprecated',
+  'TouchableMixin is deprecated',
+  'useNativeDriver'
 ]);
 
+// 🔥 РОЗУМНИЙ фільтр для помилок (console.error)
 const originalConsoleError = console.error;
 console.error = (...args) => {
-  if (typeof args[0] === 'string' && args[0].includes('Unknown event handler property')) {
+  const msg = typeof args[0] === 'string' ? args[0] : '';
+  const param1 = typeof args[1] === 'string' ? args[1] : '';
+
+  if (
+    msg.includes('Unknown event handler property') ||
+    (msg.includes('Invalid DOM property') && param1 === 'transform-origin') // 👈 Тепер ловить точно!
+  ) {
     return; 
   }
   originalConsoleError(...args);
+};
+
+// 🔥 РОЗУМНИЙ фільтр для попереджень (console.warn)
+const originalConsoleWarn = console.warn;
+console.warn = (...args) => {
+  const msg = typeof args[0] === 'string' ? args[0] : '';
+  if (
+    msg.includes('"shadow*" style props') ||
+    msg.includes('TouchableMixin') ||
+    msg.includes('useNativeDriver') ||
+    msg.includes('pointerEvents')
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
 };
 
 import { findShortestPath, buildGlobalRoute, RouteStepInfo } from '../utils/navigation';
@@ -49,19 +71,35 @@ import {
   WALLS_PATH as B2_F3_WALLS, NODES as B2_F3_NODES, EDGES as B2_F3_EDGES, START_POINTS as B2_F3_START_POINTS
 } from '../constants/maps/corp2/floor3'; 
 
+export interface RoomData {
+  id: string;
+  label: string;
+  description?: string;
+  rotateText?: boolean | number;
+  building: number;
+  floor: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const ALL_ROOMS = [
   ...COMBINED_F1_ROOMS,
   ...B1_F2_ROOMS,
   ...B1_F3_ROOMS,
   ...B2_F2_ROOMS,
   ...B2_F3_ROOMS
-];
+] as RoomData[];
 
 let globalSavedStartId = 'start_main';
 
 export default function MapScreen() {
   const params = useLocalSearchParams();
   
+  const { width } = useWindowDimensions();
+  const isNarrowSearch = width < 850; 
+
   const [activeBuilding, setActiveBuilding] = useState(1);
   const [activeFloor, setActiveFloor] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,18 +122,15 @@ export default function MapScreen() {
     globalSavedStartId = id; 
   };
 
-  // 🔥 ВИПРАВЛЕНО: Пріоритетний пошук точного збігу для уникнення плутанини (напр. 3 та 13)
   useEffect(() => {
     if (params.room) {
       const roomParam = params.room as string;
       
-      // 1. Шукаємо точний збіг по ID або Лейблу
       const exactMatch = ALL_ROOMS.find(r => 
         r.id === roomParam || 
         r.label.toLowerCase() === roomParam.toLowerCase()
       );
 
-      // 2. Якщо точного немає, шукаємо входження підрядка
       const foundRoom = exactMatch || ALL_ROOMS.find(r => 
         r.label.toLowerCase().includes(roomParam.toLowerCase())
       );
@@ -125,7 +160,6 @@ export default function MapScreen() {
     return `📅 ${date.getDate()} ${months[date.getMonth()]}, ${days[date.getDay()]}`;
   };
 
-  // 🔥 ОНОВЛЕНО: Сортування результатів пошуку (точні збіги попереду)
   const searchResults = searchQuery.trim() === '' 
     ? [] 
     : ALL_ROOMS
@@ -340,12 +374,13 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <View style={styles.searchWrapper}>
+        
+        <View style={[styles.searchWrapper, { flex: 1, marginRight: 16 }]}>
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput 
               style={styles.searchInput}
-              placeholder="Пошук кабінету (напр. Лабораторія, 24)..."
+              placeholder={isNarrowSearch ? "Пошук..." : "Пошук кабінету (напр. Лабораторія, 24)"}
               placeholderTextColor={Colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -361,7 +396,9 @@ export default function MapScreen() {
                     style={styles.searchResultItem}
                     onPress={() => handleSelectRoomFromSearch(room)}
                   >
-                    <Text style={styles.searchResultText}>{room.label}</Text>
+                    <Text style={styles.searchResultText}>
+                      {(room.description || room.label).replace('\n', ' ')}
+                    </Text>
                     <Text style={styles.searchResultSubtext}>
                       Корпус {room.building}, Поверх {room.floor}
                     </Text>
@@ -398,7 +435,13 @@ export default function MapScreen() {
 
       <Text style={styles.mapTitle}>
         {activeFloor === 1 ? '1 поверх' : `Корпус ${activeBuilding}, ${activeFloor} поверх`} — <Text style={{ fontWeight: 'bold' }}>
-          {targetRoomId ? `ціль: ${ALL_ROOMS.find(r => r.id === targetRoomId)?.label || 'каб. ' + targetRoomId}` : 'Оберіть кабінет'}
+          {targetRoomId 
+            ? `ціль: ${(() => {
+                const r = ALL_ROOMS.find(r => r.id === targetRoomId);
+                const name = r?.description || r?.label || 'каб. ' + targetRoomId;
+                return name.replace('\n', ' ');
+              })()}` 
+            : 'Оберіть кабінет'}
         </Text>
       </Text>
 
@@ -476,7 +519,7 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 40, backgroundColor: Colors.background },
-  topBar: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20, gap: 16, zIndex: 50, elevation: 50 },
+  topBar: { flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'nowrap', marginBottom: 20, zIndex: 50, elevation: 50 },
   searchWrapper: { flex: 1, maxWidth: 400, zIndex: 50, elevation: 50 },
   searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   searchIcon: { fontSize: 18, marginRight: 10 },
@@ -496,7 +539,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden' 
   },
   searchResultItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  searchResultText: { fontSize: 18, fontWeight: 'bold', color: Colors.textMain },
+  searchResultText: { fontSize: 18, fontWeight: 'bold', color: Colors.textMain, flexShrink: 1, marginRight: 10 }, 
   searchResultSubtext: { fontSize: 14, color: Colors.textSecondary },
   dateBadge: { backgroundColor: Colors.primaryGhost, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, flexShrink: 0, whiteSpace: 'nowrap' } as any,
   dateBadgeText: { fontSize: 18, fontWeight: 'bold', color: Colors.primary },
@@ -531,10 +574,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
     elevation: 8,
   },
   returnButton: {

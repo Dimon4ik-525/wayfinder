@@ -4,7 +4,7 @@ export const ROOMS = [
   { id: '26', label: 'Кабінет 26', building: 2, floor: 3, x: 45, y: 305, width: 860, height: 450 },
   { id: '27', label: 'Кабінет 27', building: 2, floor: 3, x: 45, y: 790, width: 860, height: 450 },
   
-  { id: 'psycho', label: 'Психолог', building: 2, floor: 3, x: 1390, y: 310, width: 220, height: 280 },
+  { id: 'psycho', label: 'Психолог', description:'Практичний психолог', building: 2, floor: 3, x: 1390, y: 310, width: 220, height: 280 },
   { id: 'method', label: 'Методичний кабінет', building: 2, floor: 3, x: 1625, y: 310, width: 640, height: 280 },
   { id: 'archive2', label: 'Архів №2', building: 2, floor: 3, x: 2280, y: 310, width: 210, height: 280 },
 
