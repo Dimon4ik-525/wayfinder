@@ -76,7 +76,7 @@ export default function ScheduleCard({ lessonNumber, timeStart, timeEnd, status,
             (sub.isDenominator && currentWeekType === 'Знаменник') ||
             currentWeekType === ''; 
 
-          const canNavigate = isActiveWeek && !isPast && sub.room !== '—';
+          const canNavigate = isActiveWeek && sub.room !== '—';
 
           return (
             <View key={idx} style={[styles.subLessonRow, idx > 0 && styles.divider]}>
@@ -105,12 +105,12 @@ export default function ScheduleCard({ lessonNumber, timeStart, timeEnd, status,
                 </View>
 
                 <TouchableOpacity 
-                  style={[styles.routeButton, !canNavigate && styles.routeButtonDisabled]} 
+                  style={[styles.routeButton, (!canNavigate || isPast) && styles.routeButtonDisabled]} 
                   disabled={!canNavigate}
                   onPress={() => handleMapNavigation(sub.room)} 
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.routeButtonText, !canNavigate && { color: '#9CA3AF' }]}>
+                  <Text style={[styles.routeButtonText, (!canNavigate || isPast) && { color: '#9CA3AF' }]}>
                     Як пройти?
                   </Text>
                 </TouchableOpacity>

@@ -9,7 +9,7 @@ export const ROOMS = [
   { id: '6', label: 'Кабінет 6', building: 1, floor: 2, x: 2040, y: 30, width: 730, height: 305 },
 
   // Вертикальне крило - ЛІВА сторона (зверху вниз)
-  { id: 'wc_women', label: 'WC\n ', description: 'Жіночий туалет', building: 1, floor: 2, x: 1715, y: 760, width: 220, height: 165 },
+  { id: 'wc_women', label: 'WC\n🚺', description: 'Жіночий туалет', building: 1, floor: 2, x: 1715, y: 760, width: 220, height: 165 },
   { id: '11', label: 'Кабінет 11', building: 1, floor: 2, x: 1715, y: 930, width: 370, height: 660 },
   { id: '10', label: 'Кабінет 10', building: 1, floor: 2, x: 1715, y: 1775, width: 370, height: 540 },
 
