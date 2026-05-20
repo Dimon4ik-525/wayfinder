@@ -22,7 +22,7 @@ console.error = (...args) => {
 
   if (
     msg.includes('Unknown event handler property') ||
-    (msg.includes('Invalid DOM property') && param1 === 'transform-origin') // 👈 Тепер ловить точно!
+    (msg.includes('Invalid DOM property') && param1 === 'transform-origin') 
   ) {
     return; 
   }
@@ -46,30 +46,26 @@ console.warn = (...args) => {
 
 import { findShortestPath, buildGlobalRoute, RouteStepInfo } from '../utils/navigation';
 
+// 1 ПОВЕРХ (Об'єднаний)
 import { 
   ROOMS as COMBINED_F1_ROOMS, VIEW_BOX as COMBINED_F1_VIEWBOX, 
-  WALLS_PATH as COMBINED_F1_WALLS, NODES as COMBINED_F1_NODES, EDGES as COMBINED_F1_EDGES, START_POINTS as COMBINED_F1_START_POINTS, KIOSK_POSITION as COMBINED_F1_KIOSK_POSITION
+  WALLS_PATH as COMBINED_F1_WALLS, NODES as COMBINED_F1_NODES, EDGES as COMBINED_F1_EDGES, START_POINTS as COMBINED_F1_START_POINTS, KIOSK_POSITION as COMBINED_F1_KIOSK_POSITION,
+  STATIC_LABELS as COMBINED_F1_LABELS 
 } from '../constants/maps/combined_floor1';
 
+// 2 ПОВЕРХ (Новий об'єднаний)
 import { 
-  ROOMS as B1_F2_ROOMS, VIEW_BOX as B1_F2_VIEWBOX, 
-  WALLS_PATH as B1_F2_WALLS, NODES as B1_F2_NODES, EDGES as B1_F2_EDGES, START_POINTS as B1_F2_START_POINTS
-} from '../constants/maps/corp1/floor2'; 
+  ROOMS as COMBINED_F2_ROOMS, VIEW_BOX as COMBINED_F2_VIEWBOX, 
+  WALLS_PATH as COMBINED_F2_WALLS, NODES as COMBINED_F2_NODES, EDGES as COMBINED_F2_EDGES, START_POINTS as COMBINED_F2_START_POINTS,
+  STATIC_LABELS as COMBINED_F2_LABELS 
+} from '../constants/maps/combined_floor2';
 
+// 3 ПОВЕРХ (Об'єднаний)
 import { 
-  ROOMS as B1_F3_ROOMS, VIEW_BOX as B1_F3_VIEWBOX, 
-  WALLS_PATH as B1_F3_WALLS, NODES as B1_F3_NODES, EDGES as B1_F3_EDGES, START_POINTS as B1_F3_START_POINTS
-} from '../constants/maps/corp1/floor3'; 
-
-import { 
-  ROOMS as B2_F2_ROOMS, VIEW_BOX as B2_F2_VIEWBOX, 
-  WALLS_PATH as B2_F2_WALLS, NODES as B2_F2_NODES, EDGES as B2_F2_EDGES, START_POINTS as B2_F2_START_POINTS
-} from '../constants/maps/corp2/floor2'; 
-
-import { 
-  ROOMS as B2_F3_ROOMS, VIEW_BOX as B2_F3_VIEWBOX, 
-  WALLS_PATH as B2_F3_WALLS, NODES as B2_F3_NODES, EDGES as B2_F3_EDGES, START_POINTS as B2_F3_START_POINTS
-} from '../constants/maps/corp2/floor3'; 
+  ROOMS as COMBINED_F3_ROOMS, VIEW_BOX as COMBINED_F3_VIEWBOX, 
+  WALLS_PATH as COMBINED_F3_WALLS, NODES as COMBINED_F3_NODES, EDGES as COMBINED_F3_EDGES, START_POINTS as COMBINED_F3_START_POINTS,
+  STATIC_LABELS as COMBINED_F3_LABELS 
+} from '../constants/maps/combined_floor3'; 
 
 export interface RoomData {
   id: string;
@@ -82,14 +78,13 @@ export interface RoomData {
   y: number;
   width: number;
   height: number;
+  targetStairs?: string;
 }
 
 const ALL_ROOMS = [
   ...COMBINED_F1_ROOMS,
-  ...B1_F2_ROOMS,
-  ...B1_F3_ROOMS,
-  ...B2_F2_ROOMS,
-  ...B2_F3_ROOMS
+  ...COMBINED_F2_ROOMS, 
+  ...COMBINED_F3_ROOMS 
 ] as RoomData[];
 
 let globalSavedStartId = 'start_main';
@@ -205,37 +200,32 @@ export default function MapScreen() {
   let currentNodes: any[] = [];
   let currentEdges: any[] = [];
   let currentStartPoints: any[] = []; 
+  let currentLabels: any[] = [];
 
   if (activeFloor === 1) {
     currentRooms = COMBINED_F1_ROOMS; currentViewBox = COMBINED_F1_VIEWBOX;
     currentWallsPath = COMBINED_F1_WALLS; currentNodes = COMBINED_F1_NODES; currentEdges = COMBINED_F1_EDGES; 
     currentStartPoints = COMBINED_F1_START_POINTS || []; 
-  } else if (activeBuilding === 1 && activeFloor === 2) {
-    currentRooms = B1_F2_ROOMS; currentViewBox = B1_F2_VIEWBOX;
-    currentWallsPath = B1_F2_WALLS; currentNodes = B1_F2_NODES; currentEdges = B1_F2_EDGES;
-    currentStartPoints = B1_F2_START_POINTS || [];
-  } else if (activeBuilding === 1 && activeFloor === 3) {
-    currentRooms = B1_F3_ROOMS; currentViewBox = B1_F3_VIEWBOX;
-    currentWallsPath = B1_F3_WALLS; currentNodes = B1_F3_NODES; currentEdges = B1_F3_EDGES;
-    currentStartPoints = B1_F3_START_POINTS || [];
-  } else if (activeBuilding === 2 && activeFloor === 2) {
-    currentRooms = B2_F2_ROOMS; currentViewBox = B2_F2_VIEWBOX;
-    currentWallsPath = B2_F2_WALLS; currentNodes = B2_F2_NODES; currentEdges = B2_F2_EDGES;
-    currentStartPoints = B2_F2_START_POINTS || [];
-  } else if (activeBuilding === 2 && activeFloor === 3) {
-    currentRooms = B2_F3_ROOMS; currentViewBox = B2_F3_VIEWBOX;
-    currentWallsPath = B2_F3_WALLS; currentNodes = B2_F3_NODES; currentEdges = B2_F3_EDGES;
-    currentStartPoints = B2_F3_START_POINTS || [];
+    currentLabels = COMBINED_F1_LABELS || []; 
+  } else if (activeFloor === 2) {
+    currentRooms = COMBINED_F2_ROOMS; currentViewBox = COMBINED_F2_VIEWBOX;
+    currentWallsPath = COMBINED_F2_WALLS; currentNodes = COMBINED_F2_NODES; currentEdges = COMBINED_F2_EDGES;
+    currentStartPoints = COMBINED_F2_START_POINTS || [];
+    currentLabels = COMBINED_F2_LABELS || [];
+  } else if (activeFloor === 3) {
+    currentRooms = COMBINED_F3_ROOMS; currentViewBox = COMBINED_F3_VIEWBOX;
+    currentWallsPath = COMBINED_F3_WALLS; currentNodes = COMBINED_F3_NODES; currentEdges = COMBINED_F3_EDGES;
+    currentStartPoints = COMBINED_F3_START_POINTS || [];
+    currentLabels = COMBINED_F3_LABELS || [];
   }
 
   let effectiveStartId = activeStartId;
   let dynamicKioskPosition = { x: 0, y: 0 };
 
-  if (activeFloor > 1) {
-    if (activeBuilding === 1) {
-      effectiveStartId = 'stairs_main_b1'; 
-    } else {
-      effectiveStartId = 'stairs_main_b2';
+  if (currentStartPoints && currentStartPoints.length > 0) {
+    const isValidStart = currentStartPoints.some(sp => sp.id === effectiveStartId);
+    if (!isValidStart) {
+      effectiveStartId = currentStartPoints[0].id;
     }
   }
 
@@ -244,7 +234,6 @@ export default function MapScreen() {
   if (startNode) {
     dynamicKioskPosition = { x: startNode.x, y: startNode.y };
   } else if (currentStartPoints && currentStartPoints.length > 0) {
-    effectiveStartId = currentStartPoints[0].id;
     dynamicKioskPosition = { x: currentStartPoints[0].x, y: currentStartPoints[0].y };
   } else {
     effectiveStartId = 'none';
@@ -272,7 +261,27 @@ export default function MapScreen() {
 
     let actualTargetId = targetRoomId;
     if (activeFloor === 1 && targetRoom.floor > 1) {
-      actualTargetId = targetRoom.building === 1 ? 'stairs_main_b1' : 'stairs_main_b2';
+      actualTargetId = targetRoom.targetStairs || (targetRoom.building === 1 ? 'stairs_main_b1' : 'stairs_main_b2');
+    }
+
+    let bestStartId = effectiveStartId;
+    let guaranteedPath = findShortestPath(bestStartId, actualTargetId, currentNodes, currentEdges);
+
+    if (guaranteedPath.length === 0 && currentStartPoints.length > 1) {
+        for (const sp of currentStartPoints) {
+            const altPath = findShortestPath(sp.id, actualTargetId, currentNodes, currentEdges);
+            if (altPath.length > 0) {
+                bestStartId = sp.id;
+                guaranteedPath = altPath;
+                if (activeStartId !== bestStartId) {
+                  setTimeout(() => {
+                    setActiveStartId(bestStartId);
+                    globalSavedStartId = bestStartId;
+                  }, 0);
+                }
+                break;
+            }
+        }
     }
 
     const info = buildGlobalRoute(
@@ -280,13 +289,11 @@ export default function MapScreen() {
         effectiveTargetBuilding,
         activeFloor, 
         targetRoom.floor, 
-        effectiveStartId, 
+        bestStartId, 
         actualTargetId, 
         currentNodes, 
         currentEdges
     );
-
-    const guaranteedPath = findShortestPath(effectiveStartId, actualTargetId, currentNodes, currentEdges);
     
     if (info) {
         let finalInstruction = info.instruction;
@@ -294,7 +301,7 @@ export default function MapScreen() {
         let finalNextFloor = info.nextFloor;
 
         if (activeFloor === 1 && targetRoom.floor > 1) {
-            finalInstruction = `Підніміться на ${targetRoom.floor} поверх (Корпус ${targetRoom.building}) ➔`;
+            finalInstruction = `Підніміться на ${targetRoom.floor} поверх ➔`;
             finalNextBuilding = targetRoom.building;
             finalNextFloor = targetRoom.floor;
         }
@@ -329,13 +336,23 @@ export default function MapScreen() {
       startId: effectiveStartId
     }]);
 
+    let nextStart = routeInfo.nextStartId;
+    if (targetRoomId) {
+      const targetRoom = ALL_ROOMS.find(r => r.id === targetRoomId);
+      if (targetRoom && targetRoom.targetStairs) {
+        nextStart = targetRoom.targetStairs; 
+      }
+    }
+
     if (routeInfo.isMultiBuilding && routeInfo.nextBuilding) {
         setActiveBuilding(routeInfo.nextBuilding);
         setActiveFloor(routeInfo.nextFloor || 1); 
-        setActiveStartId(routeInfo.nextStartId); 
+        setActiveStartId(nextStart); 
+        globalSavedStartId = nextStart;
     } else if (routeInfo.isMultiFloor && routeInfo.nextFloor) {
         setActiveFloor(routeInfo.nextFloor);
-        setActiveStartId(routeInfo.nextStartId); 
+        setActiveStartId(nextStart); 
+        globalSavedStartId = nextStart;
     }
   };
 
@@ -414,7 +431,8 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {currentStartPoints && currentStartPoints.length > 1 && routeHistory.length === 0 && !targetRoomId && (
+      {/* 🔥 ОНОВЛЕНО: Перемикач з'являється ТІЛЬКИ на 1 поверсі */}
+      {activeFloor === 1 && currentStartPoints && currentStartPoints.length > 1 && routeHistory.length === 0 && !targetRoomId && (
         <View style={styles.startPointsPanel}>
           <Text style={styles.startPointsLabel}>Почати маршрут від:</Text>
           <View style={styles.startPointsButtons}>
@@ -425,7 +443,7 @@ export default function MapScreen() {
                 onPress={() => changeStartPoint(sp.id)}
               >
                 <Text style={[styles.startBtnText, effectiveStartId === sp.id && styles.startBtnTextActive]}>
-                  📍 {sp.label}
+                  📍 {sp.label || 'Вхід'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -434,7 +452,7 @@ export default function MapScreen() {
       )}
 
       <Text style={styles.mapTitle}>
-        {activeFloor === 1 ? '1 поверх' : `Корпус ${activeBuilding}, ${activeFloor} поверх`} — <Text style={{ fontWeight: 'bold' }}>
+        {activeFloor} поверх — <Text style={{ fontWeight: 'bold' }}>
           {targetRoomId 
             ? `ціль: ${(() => {
                 const r = ALL_ROOMS.find(r => r.id === targetRoomId);
@@ -447,22 +465,14 @@ export default function MapScreen() {
 
       <View style={styles.controlPanel}>
         <View style={styles.tabSelector}>
-          {[1, 2].map((building) => (
             <TouchableOpacity 
-              key={`b-${building}`}
-              style={[styles.tabButton, activeBuilding === building && styles.tabButtonActive]}
-              onPress={() => {
-                setActiveBuilding(building);
-                setTargetRoomId(null); 
-                setActiveFloor(1); 
-                setRouteHistory([]); 
-              }}
+              style={[styles.tabButton, styles.tabButtonActive]}
+              disabled={true} 
             >
-              <Text style={[styles.tabButtonText, activeBuilding === building && styles.tabButtonTextActive]}>
-                Корпус {building}
+              <Text style={[styles.tabButtonText, styles.tabButtonTextActive]}>
+                Головний корпус
               </Text>
             </TouchableOpacity>
-          ))}
         </View>
 
         <View style={styles.tabSelector}>
@@ -485,12 +495,15 @@ export default function MapScreen() {
       <View style={styles.mapArea}>
         <MapCanvas 
           rooms={currentRooms}
+          startPoints={currentStartPoints}
+          activeStartId={effectiveStartId}
           kioskPosition={dynamicKioskPosition}
           viewBox={currentViewBox}
           wallsPath={currentWallsPath}
           targetRoomId={targetRoomId}
           routePath={generateRoutePathString()}
           onRoomSelect={handleRoomClick}
+          staticLabels={currentLabels} 
         />
       </View>
 

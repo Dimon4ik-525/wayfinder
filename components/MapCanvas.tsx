@@ -6,22 +6,28 @@ import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-vi
 
 interface MapCanvasProps {
   rooms: any[];
-  kioskPosition: { x: number; y: number };
+  startPoints?: { id: string; label?: string; x: number; y: number }[]; // 🔥 Масив усіх стартових точок (сходів/входів)
+  activeStartId?: string; // 🔥 ID активної точки (щоб зробити її червоною "ВИ ТУТ")
+  kioskPosition: { x: number; y: number }; // Залишаємо для сумісності з 1 поверхом, якщо там немає startPoints
   viewBox: string;
   wallsPath: string;
   targetRoomId: string | null;
   routePath: string;
   onRoomSelect: (roomId: string | null) => void;
+  staticLabels?: { id: string, text: string, x: number, y: number, fontSize?: number, color?: string }[];
 }
 
 export default function MapCanvas({ 
   rooms, 
+  startPoints = [], // За замовчуванням порожній масив
+  activeStartId,
   kioskPosition, 
   viewBox, 
   wallsPath, 
   targetRoomId, 
   routePath, 
-  onRoomSelect 
+  onRoomSelect,
+  staticLabels
 }: MapCanvasProps) {
 
   const zoomRef = useRef<any>(null);
@@ -79,6 +85,22 @@ export default function MapCanvas({
             <Path d={wallsPath} stroke="#9CA3AF" strokeWidth="6" fill="none" />
           )}
 
+          {staticLabels && staticLabels.map((label) => (
+            <SvgText
+              key={label.id}
+              x={label.x}
+              y={label.y}
+              fill={label.color || '#9CA3AF'}
+              fontSize={label.fontSize || 60}
+              fontWeight="bold"
+              textAnchor="middle"
+              alignmentBaseline="middle"
+              pointerEvents="none"
+            >
+              {label.text}
+            </SvgText>
+          ))}
+
           {rooms.map((room) => {
             const isActive = room.id === targetRoomId;
             const lines = (room.label || '').split('\n');
@@ -93,7 +115,6 @@ export default function MapCanvas({
                   stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
                 />
                 
-                {/* 🔥 ОНОВЛЕНО: Додано логіку повороту тексту */}
                 <SvgText 
                   x={room.x + (room.width / 2)} y={startY} 
                   fill={isActive ? Colors.white : Colors.textMain} 
@@ -116,11 +137,33 @@ export default function MapCanvas({
             <Path d={routePath} stroke={Colors.primary} strokeWidth="24" strokeDasharray="40, 30" fill="none" strokeLinejoin="round" />
           )}
 
-          <G x={kioskPosition.x} y={kioskPosition.y}>
-            <Circle cx="0" cy="0" r="80" fill={Colors.error} opacity="0.2" />
-            <Circle cx="0" cy="0" r="30" fill={Colors.error} />
-            <SvgText x="0" y="140" fill={Colors.error} fontSize="60" fontWeight="bold" textAnchor="middle">ВИ ТУТ</SvgText>
-          </G>
+          {/* 🔥 ЛОГІКА ВІДОБРАЖЕННЯ ТОЧОК */}
+          {startPoints && startPoints.length > 0 ? (
+            /* Якщо є масив startPoints (наприклад, 2-й поверх) - малюємо ВСІ сходи */
+            startPoints.map((sp) => {
+              const isActive = sp.id === activeStartId;
+              // Активна точка - червона (ВИ ТУТ), інші - сині (СХОДИ)
+              const fillColor = isActive ? Colors.error : Colors.primary;
+              return (
+                <G key={`start-${sp.id}`} x={sp.x} y={sp.y}>
+                  <Circle cx="0" cy="0" r="80" fill={fillColor} opacity="0.2" />
+                  <Circle cx="0" cy="0" r="30" fill={fillColor} />
+                  <SvgText x="0" y="140" fill={fillColor} fontSize="50" fontWeight="bold" textAnchor="middle">
+                    {isActive ? 'ВИ ТУТ' : 'СХОДИ'}
+                  </SvgText>
+                </G>
+              );
+            })
+          ) : (
+            /* Якщо масиву немає (стара логіка 1-го поверху з кіоском) - малюємо одну точку */
+            kioskPosition && (
+              <G x={kioskPosition.x} y={kioskPosition.y}>
+                <Circle cx="0" cy="0" r="80" fill={Colors.error} opacity="0.2" />
+                <Circle cx="0" cy="0" r="30" fill={Colors.error} />
+                <SvgText x="0" y="140" fill={Colors.error} fontSize="60" fontWeight="bold" textAnchor="middle">ВИ ТУТ</SvgText>
+              </G>
+            )
+          )}
         </Svg>
       </ReactNativeZoomableView>
 
