@@ -1,33 +1,37 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import Svg, { Rect, Path, Circle, Text as SvgText, TSpan, G } from 'react-native-svg';
+import Svg, { Rect, Path, Circle, Text as SvgText, TSpan, G, Defs, Pattern, Line, Polygon } from 'react-native-svg';
 import { Colors } from '../constants/theme';
 import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-view';
 
-interface MapCanvasProps {
+export interface MapCanvasProps {
   rooms: any[];
-  startPoints?: { id: string; label?: string; x: number; y: number }[]; // 🔥 Масив усіх стартових точок (сходів/входів)
-  activeStartId?: string; // 🔥 ID активної точки (щоб зробити її червоною "ВИ ТУТ")
-  kioskPosition: { x: number; y: number }; // Залишаємо для сумісності з 1 поверхом, якщо там немає startPoints
+  startPoints?: { id: string; label?: string; x: number; y: number }[]; // Масив усіх стартових точок (сходів/входів)
+  activeStartId?: string; // ID активної точки (щоб зробити її червоною "ВИ ТУТ")
   viewBox: string;
   wallsPath: string;
   targetRoomId: string | null;
   routePath: string;
   onRoomSelect: (roomId: string | null) => void;
   staticLabels?: { id: string, text: string, x: number, y: number, fontSize?: number, color?: string }[];
+  // 🔥 Гнучка підтримка прямокутників та складних багатокутників
+  roofZones?: { id: string, label: string, x: number, y: number, width?: number, height?: number, points?: string }[];
+  // 🔥 Новий пропс для доріг
+  roadZones?: string[];
 }
 
 export default function MapCanvas({ 
   rooms, 
-  startPoints = [], // За замовчуванням порожній масив
+  startPoints = [], 
   activeStartId,
-  kioskPosition, 
   viewBox, 
   wallsPath, 
   targetRoomId, 
   routePath, 
   onRoomSelect,
-  staticLabels
+  staticLabels,
+  roofZones = [],
+  roadZones = [] // 👈 Дефолтне значення, щоб не було помилок
 }: MapCanvasProps) {
 
   const zoomRef = useRef<any>(null);
@@ -81,6 +85,110 @@ export default function MapCanvas({
         }}
       >
         <Svg width="100%" height="100%" viewBox={viewBox} preserveAspectRatio="xMidYMid meet">
+          
+          <Defs>
+            {/* 🔥 ШАБЛОН ДІАГОНАЛЬНОЇ ШТРИХОВКИ ДЛЯ ДАХІВ */}
+            <Pattern id="diagonalHatch" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <Line x1="0" y1="0" x2="0" y2="40" stroke="#E2E8F0" strokeWidth="4" />
+            </Pattern>
+
+            {/* 🔥 НОВИЙ ПАТЕРН ДЛЯ ДОРІГ */}
+            <Pattern id="roadHatch" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+              <Line x1="0" y1="0" x2="0" y2="40" stroke="#CBD5E1" strokeWidth="6" />
+            </Pattern>
+          </Defs>
+
+          {/* 🔥 РЕНДЕР ДОРІГ (Малюється під будівлею) */}
+          {roadZones.map((roadPoints, index) => (
+            <Polygon 
+              key={`road-${index}`} 
+              points={roadPoints} 
+              fill="url(#roadHatch)" 
+              stroke="#94A3B8" 
+              strokeWidth="4" 
+              pointerEvents="none"
+            />
+          ))}
+
+          {/* 🔥 РОЗУМНИЙ РЕНДЕРИНГ ЗОН ДАХУ З АВТО-ВИРІВНЮВАННЯМ ЦЕНТРУ */}
+          {roofZones.map((roof) => {
+            let textX = roof.x;
+            let textY = roof.y;
+
+            // 🧮 АВТОМАТИЧНИЙ РОЗРАХУНОК ЦЕНТРОЇДА ДЛЯ СКЛАДНИХ ПОЛІГОНІВ
+            if (roof.points) {
+              const pairs = roof.points.trim().split(/\s+/);
+              let sumX = 0;
+              let sumY = 0;
+              let count = 0;
+
+              pairs.forEach(pair => {
+                const [strX, strY] = pair.split(',');
+                const numX = parseFloat(strX);
+                const numY = parseFloat(strY);
+                
+                if (!isNaN(numX) && !isNaN(numY)) {
+                  sumX += numX;
+                  sumY += numY;
+                  count++;
+                }
+              });
+
+              if (count > 0) {
+                textX = sumX / count; // Обчислюємо середній геометричний X
+                textY = sumY / count; // Обчислюємо середній геометричний Y
+              }
+            } else {
+              // 📐 Класичний центр для звичайних прямокутників
+              textX = roof.x + (roof.width || 0) / 2;
+              textY = roof.y + (roof.height || 0) / 2;
+            }
+
+            return (
+              <G key={roof.id}>
+                {roof.points ? (
+                  /* 🔷 Рендеринг шестикутника або іншої складної форми */
+                  <Polygon
+                    points={roof.points}
+                    fill="url(#diagonalHatch)"
+                    stroke="#CBD5E1"
+                    strokeWidth="4"
+                    strokeDasharray="15, 10"
+                    pointerEvents="none"
+                  />
+                ) : (
+                  /* ⬜️ Рендеринг класичного прямокутника */
+                  <Rect 
+                    x={roof.x} 
+                    y={roof.y} 
+                    width={roof.width || 0} 
+                    height={roof.height || 0} 
+                    fill="url(#diagonalHatch)" 
+                    stroke="#CBD5E1" 
+                    strokeWidth="4" 
+                    strokeDasharray="15, 10"
+                    rx="8"
+                    pointerEvents="none"
+                  />
+                )}
+
+                {/* 🔥 АВТОМАТИЧНИЙ НАДПИС: Стає строго в розрахований геометричний центр */}
+                <SvgText 
+                  x={textX} 
+                  y={textY} 
+                  fill="#475569" // Чіткий Slate колір, що добре читається поверх ліній штриховки
+                  fontSize={55}   
+                  fontWeight="bold" 
+                  textAnchor="middle"
+                  alignmentBaseline="central" 
+                  pointerEvents="none"
+                >
+                  {roof.label}
+                </SvgText>
+              </G>
+            );
+          })}
+
           {wallsPath !== "" && (
             <Path d={wallsPath} stroke="#9CA3AF" strokeWidth="6" fill="none" />
           )}
@@ -137,33 +245,25 @@ export default function MapCanvas({
             <Path d={routePath} stroke={Colors.primary} strokeWidth="24" strokeDasharray="40, 30" fill="none" strokeLinejoin="round" />
           )}
 
-          {/* 🔥 ЛОГІКА ВІДОБРАЖЕННЯ ТОЧОК */}
-          {startPoints && startPoints.length > 0 ? (
-            /* Якщо є масив startPoints (наприклад, 2-й поверх) - малюємо ВСІ сходи */
-            startPoints.map((sp) => {
-              const isActive = sp.id === activeStartId;
-              // Активна точка - червона (ВИ ТУТ), інші - сині (СХОДИ)
-              const fillColor = isActive ? Colors.error : Colors.primary;
-              return (
-                <G key={`start-${sp.id}`} x={sp.x} y={sp.y}>
-                  <Circle cx="0" cy="0" r="80" fill={fillColor} opacity="0.2" />
-                  <Circle cx="0" cy="0" r="30" fill={fillColor} />
-                  <SvgText x="0" y="140" fill={fillColor} fontSize="50" fontWeight="bold" textAnchor="middle">
-                    {isActive ? 'ВИ ТУТ' : 'СХОДИ'}
-                  </SvgText>
-                </G>
-              );
-            })
-          ) : (
-            /* Якщо масиву немає (стара логіка 1-го поверху з кіоском) - малюємо одну точку */
-            kioskPosition && (
-              <G x={kioskPosition.x} y={kioskPosition.y}>
-                <Circle cx="0" cy="0" r="80" fill={Colors.error} opacity="0.2" />
-                <Circle cx="0" cy="0" r="30" fill={Colors.error} />
-                <SvgText x="0" y="140" fill={Colors.error} fontSize="60" fontWeight="bold" textAnchor="middle">ВИ ТУТ</SvgText>
+          {/* ЛОГІКА ВІДОБРАЖЕННЯ ТОЧОК — ТЕПЕР ТІЛЬКИ ЧИСТІ START_POINTS */}
+          {startPoints.map((sp) => {
+            const isActive = sp.id === activeStartId;
+            const fillColor = isActive ? Colors.error : Colors.primary;
+
+            let inactiveText = sp.label || 'СХОДИ';
+            if (!sp.label && sp.id === 'start_main') inactiveText = 'ВХІД №1';
+            if (!sp.label && sp.id === 'start_entrance') inactiveText = 'ВХІД №2';
+
+            return (
+              <G key={`start-${sp.id}`} x={sp.x} y={sp.y}>
+                <Circle cx="0" cy="0" r="80" fill={fillColor} opacity="0.2" />
+                <Circle cx="0" cy="0" r="30" fill={fillColor} />
+                <SvgText x="0" y="100" fill={fillColor} fontSize={42} fontWeight="bold" textAnchor="middle">
+                  {isActive ? 'ВИ ТУТ' : inactiveText}
+                </SvgText>
               </G>
-            )
-          )}
+            );
+          })}
         </Svg>
       </ReactNativeZoomableView>
 

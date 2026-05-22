@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   selectorContainer: { zIndex: 100, marginBottom: 15 },
   listContainer: { flex: 1, marginTop: 10, position: 'relative', alignItems: 'stretch' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  redLineContainer: { position: 'absolute', left: -10, right: 0, flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  redLineContainer: { position: 'absolute', left: 4, right: 4, flexDirection: 'row', alignItems: 'center', zIndex: 10 },
   redBadge: { backgroundColor: Colors.error, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 100, elevation: 3 },
   redBadgeText: { color: Colors.white, fontSize: 12, fontWeight: 'bold' },
   redLine: { flex: 1, height: 2, backgroundColor: Colors.error },

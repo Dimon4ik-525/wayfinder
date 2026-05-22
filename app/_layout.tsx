@@ -10,12 +10,11 @@ export default function RootLayout() {
   
   const { width, height } = useWindowDimensions();
 
-  // 🔥 Логіка адаптивності (3 стани)
-  const isCompact = height < 800; // Для низьких екранів
-  const isMobile = width < 500;   // ТІЛЬКИ для вертикальних телефонів (ховаємо сайдбар повністю)
-  const isCollapsed = width < 900 && !isMobile; // Стан "Міні-сайдбар" для вузьких вікон
+  // Логіка адаптивності (3 стани)
+  const isCompact = height < 800; 
+  const isMobile = width < 500;   
+  const isCollapsed = width < 900 && !isMobile; 
 
-  // 🔥 Якщо згорнуто - жорстко 90px, інакше гнучка ширина 240-320px
   const dynamicSidebarWidth = isCollapsed ? 90 : Math.min(Math.max(width * 0.28, 240), 320);
 
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -49,93 +48,107 @@ export default function RootLayout() {
 
   return (
     <View style={styles.container}>
-      {/* ЛІВИЙ САЙДБАР (ховаємо тільки на дуже вузьких смартфонах) */}
+      {/* ЛІВИЙ САЙДБАР */}
       {!isMobile && (
         <View style={[
           styles.sidebar, 
           { 
             width: dynamicSidebarWidth, 
-            paddingTop: isCompact ? 30 : 60,
-            paddingBottom: isCompact ? 30 : 60,
+            paddingTop: isCompact ? 15 : 25, 
+            paddingBottom: isCompact ? 20 : 40,
           }
         ]}>
           
-          {/* ЛОГОТИП (зменшується у міні-версії) */}
-          <View style={[
-            styles.logoContainer,
-            { 
-              width: isCollapsed ? 60 : (isCompact ? 80 : 120), 
-              height: isCollapsed ? 60 : (isCompact ? 80 : 120),
-              borderRadius: isCollapsed ? 12 : 16,
-              padding: isCollapsed ? 5 : 10 
-            }
-          ]}>
-            <Image 
-              source={require('../assets/images/logo.png')} 
-              style={styles.logoImage} 
-              resizeMode="contain" 
-            />
-          </View>
-
-          {/* НАВІГАЦІЙНЕ МЕНЮ */}
-          <View style={[styles.menuContainer, { 
-            marginTop: isCompact ? 20 : 40,
-            paddingHorizontal: isCollapsed ? 10 : 20 // Менші відступи для міні-версії
-          }]}>
-            <TouchableOpacity 
-              style={[
-                styles.menuButton, 
-                pathname === '/schedule' && styles.menuButtonActive, 
-                { 
-                  paddingVertical: isCompact ? 12 : 16,
-                  justifyContent: isCollapsed ? 'center' : 'flex-start', // Центруємо іконки
-                  paddingHorizontal: isCollapsed ? 0 : 20
-                }
-              ]}
-              onPress={() => router.replace('/schedule')}
-            >
-              <Text style={[pathname === '/schedule' ? styles.menuTextActive : styles.menuText, { fontSize: isCollapsed ? 26 : 16 }]}>
-                {isCollapsed ? '📅' : '📅 Розклад груп'}
-              </Text>
-            </TouchableOpacity>
+          {/* ВЕРХНЯ ЧАСТИНА: ЛОГО + МЕНЮ */}
+          <View style={styles.sidebarTop}>
             
-            <TouchableOpacity 
-              style={[
-                styles.menuButton, 
-                pathname === '/map' && styles.menuButtonActive, 
-                { 
-                  paddingVertical: isCompact ? 12 : 16,
-                  justifyContent: isCollapsed ? 'center' : 'flex-start',
-                  paddingHorizontal: isCollapsed ? 0 : 20
-                }
-              ]}
-              onPress={() => router.replace('/map')}
-            >
-              <Text style={[pathname === '/map' ? styles.menuTextActive : styles.menuText, { fontSize: isCollapsed ? 26 : 16 }]}>
-                {isCollapsed ? '📍' : '📍 Мапа корпусу'}
-              </Text>
-            </TouchableOpacity>
+            {/* ЛОГОТИП */}
+            <View style={[
+              styles.logoContainer,
+              { 
+                width: isCollapsed ? 60 : (isCompact ? 80 : 90), 
+                height: isCollapsed ? 60 : (isCompact ? 80 : 90),
+                borderRadius: isCollapsed ? 12 : 16,
+                marginLeft: isCollapsed ? 0 : 20, 
+                alignSelf: isCollapsed ? 'center' : 'flex-start',
+              }
+            ]}>
+              <Image 
+                source={require('../assets/images/logo.png')} 
+                style={styles.logoImage} 
+                resizeMode="contain" 
+              />
+            </View>
+
+            {/* НАВІГАЦІЙНЕ МЕНЮ */}
+            <View style={[styles.menuContainer, { 
+              marginTop: isCompact ? 20 : 35,
+              paddingHorizontal: isCollapsed ? 10 : 20 
+            }]}>
+              <TouchableOpacity 
+                style={[
+                  styles.menuButton, 
+                  pathname === '/schedule' && styles.menuButtonActive, 
+                  { 
+                    paddingVertical: isCompact ? 12 : 16,
+                    justifyContent: isCollapsed ? 'center' : 'flex-start', 
+                    paddingHorizontal: isCollapsed ? 0 : 20
+                  }
+                ]}
+                onPress={() => router.replace('/schedule')}
+              >
+                <Text style={[pathname === '/schedule' ? styles.menuTextActive : styles.menuText, { fontSize: isCollapsed ? 26 : 16 }]}>
+                  {isCollapsed ? '📅' : '📅 Розклад груп'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.menuButton, 
+                  pathname === '/map' && styles.menuButtonActive, 
+                  { 
+                    paddingVertical: isCompact ? 12 : 16,
+                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    paddingHorizontal: isCollapsed ? 0 : 20
+                  }
+                ]}
+                onPress={() => router.replace('/map')}
+              >
+                <Text style={[pathname === '/map' ? styles.menuTextActive : styles.menuText, { fontSize: isCollapsed ? 26 : 16 }]}>
+                  {isCollapsed ? '📍' : '📍 Мапа корпусу'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* ВІДЖЕТ ПОДІЙ (повністю ховаємо, коли місця мало) */}
+          {/* ВІДЖЕТ ПОДІЙ */}
           {!isCollapsed && (
             <View style={styles.widgetWrapper}>
               <EventsWidget />
             </View>
           )}
 
-          {/* ЖИВИЙ ГОДИННИК */}
-          <View style={styles.clockContainer}>
-            <Text 
-              style={[styles.time, { fontSize: isCollapsed ? 20 : (isCompact || dynamicSidebarWidth < 260 ? 50 : 80) }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
+          {/* НИЖНЯ ЧАСТИНА: ГОДИННИК ТА НАЛАШТУВАННЯ */}
+          <View style={styles.sidebarBottom}>
+            <View style={styles.clockContainer}>
+              <Text 
+                style={[styles.time, { fontSize: isCollapsed ? 20 : (isCompact || dynamicSidebarWidth < 260 ? 50 : 80) }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatTime(currentTime)}
+              </Text>
+              {!isCollapsed && <Text style={[styles.date, { fontSize: isCompact ? 18 : 24 }]}>{formatDate(currentTime)}</Text>}
+              {!isCollapsed && <Text style={[styles.day, { fontSize: isCompact ? 18 : 24 }]}>{formatDay(currentTime)}</Text>}
+            </View>
+
+            {/* 🔥 КНОПКА НАЛАШТУВАНЬ (ШЕСТІРНЯ) */}
+            <TouchableOpacity 
+              style={styles.settingsButton}
+              onPress={() => router.push('/settings' as any)}
             >
-              {formatTime(currentTime)}
-            </Text>
-            {/* Ховаємо дату і день у міні-версії */}
-            {!isCollapsed && <Text style={[styles.date, { fontSize: isCompact ? 18 : 24 }]}>{formatDate(currentTime)}</Text>}
-            {!isCollapsed && <Text style={[styles.day, { fontSize: isCompact ? 18 : 24 }]}>{formatDay(currentTime)}</Text>}
+              <Text style={styles.settingsIcon}>⚙️</Text>
+            </TouchableOpacity>
           </View>
 
         </View>
@@ -146,7 +159,7 @@ export default function RootLayout() {
         <Slot /> 
       </View>
 
-      {/* НИЖНЄ МЕНЮ (тільки для реальних телефонів, ширина < 500) */}
+      {/* НИЖНЄ МЕНЮ ДЛЯ МОБІЛОК */}
       {isMobile && (
         <View style={styles.mobileBottomBar}>
           <TouchableOpacity onPress={() => router.replace('/schedule')} style={styles.mobileTab}>
@@ -154,6 +167,9 @@ export default function RootLayout() {
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.replace('/map')} style={styles.mobileTab}>
             <Text style={pathname === '/map' ? styles.menuTextActive : styles.menuText}>📍 Мапа</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={styles.mobileTab}>
+            <Text style={pathname === '/settings' ? styles.menuTextActive : styles.menuText}>⚙️ Налашт.</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -169,6 +185,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flexShrink: 0, 
+    height: '100%',
+  },
+
+  sidebarTop: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
   },
   
   logoContainer: { 
@@ -176,6 +199,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center', 
     borderRadius: 16,
+    padding: 10,
+    marginTop: 5, 
   },
   logoImage: { width: '100%', height: '100%' },
   
@@ -194,11 +219,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden', 
   },
 
-  clockContainer: { alignItems: 'center', paddingHorizontal: 10 },
+  // 🔥 ОНОВЛЕНО: Блок для годинника та налаштувань
+  sidebarBottom: {
+    width: '100%',
+    alignItems: 'center',
+    position: 'relative', // Дозволяє абсолютно позиціонувати шестірню
+  },
+
+  clockContainer: { alignItems: 'center', paddingHorizontal: 10, marginBottom: 20 },
   time: { fontWeight: 'bold', color: Colors.white, letterSpacing: 2, textAlign: 'center' },
   date: { color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
   day: { color: Colors.textSecondary, marginTop: 2, textAlign: 'center' },
   
+  // 🔥 СТИЛІ ДЛЯ КНОПКИ НАЛАШТУВАНЬ
+  settingsButton: {
+    position: 'absolute',
+    bottom: -10, // Відступ від нижнього краю сайдбару
+    right: 20,   // Притискаємо до правого краю, щоб не перекривати годинник
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsIcon: { fontSize: 20 },
+
   mainContent: { flex: 1, position: 'relative' },
 
   mobileBottomBar: {
