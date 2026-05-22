@@ -320,12 +320,12 @@ export default function MapScreen() {
       <View style={styles.topBar}>
         
         {/* Пошуковий рядок */}
-        <View style={[styles.searchWrapper, { flex: 1, minWidth: 250 }]}>
+        <View style={[styles.searchWrapper, { flex: 1, minWidth: 250, maxWidth: 370 }]}>
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput 
               style={styles.searchInput}
-              placeholder={isNarrowSearch ? "Пошук..." : "Пошук кабінету (напр. Лабораторія, 24)"}
+              placeholder={isNarrowSearch ? "Пошук..." : "Пошук кабінету (напр. Кабінет 25)"}
               placeholderTextColor={Colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
