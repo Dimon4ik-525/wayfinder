@@ -14,9 +14,7 @@ export interface MapCanvasProps {
   routePath: string;
   onRoomSelect: (roomId: string | null) => void;
   staticLabels?: { id: string, text: string, x: number, y: number, fontSize?: number, color?: string }[];
-  // 🔥 Гнучка підтримка прямокутників та складних багатокутників
-  roofZones?: { id: string, label: string, x: number, y: number, width?: number, height?: number, points?: string }[];
-  // 🔥 Новий пропс для доріг
+  roofZones?: any[]; // 🔥 Дозволяємо передавати будь-які об'єкти даху або пустий масив
   roadZones?: string[];
 }
 
@@ -31,17 +29,18 @@ export default function MapCanvas({
   onRoomSelect,
   staticLabels,
   roofZones = [],
-  roadZones = [] // 👈 Дефолтне значення, щоб не було помилок
+  roadZones = [] 
 }: MapCanvasProps) {
 
   const zoomRef = useRef<any>(null);
   const currentZoom = useRef<number>(1);
   const [resetKey, setResetKey] = useState(0);
 
-  if (rooms.length === 0) {
+  // 🔥 Заглушка показується тільки тоді, коли немає ні кімнат, ні стін, ні дахів
+  if (rooms.length === 0 && !wallsPath && roofZones.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>Мапа для цього поверху ще в розробці...</Text>
+        <Text style={styles.emptyText}>Мапа для цього об'єкта ще в розробці...</Text>
       </View>
     );
   }
@@ -98,7 +97,7 @@ export default function MapCanvas({
             </Pattern>
           </Defs>
 
-          {/* 🔥 РЕНДЕР ДОРІГ (Малюється під будівлею) */}
+          {/* 🔥 РЕНДЕР ДОРІГ */}
           {roadZones.map((roadPoints, index) => (
             <Polygon 
               key={`road-${index}`} 
@@ -110,79 +109,32 @@ export default function MapCanvas({
             />
           ))}
 
-          {/* 🔥 РОЗУМНИЙ РЕНДЕРИНГ ЗОН ДАХУ З АВТО-ВИРІВНЮВАННЯМ ЦЕНТРУ */}
+          {/* 🔥 РОЗУМНИЙ РЕНДЕРИНГ ЗОН ДАХУ */}
           {roofZones.map((roof) => {
-            let textX = roof.x;
-            let textY = roof.y;
+            // 🔥 РУЧНЕ АБО АВТОМАТИЧНЕ ЦЕНТРУВАННЯ ТЕКСТУ
+            let textX = roof.textX !== undefined ? roof.textX : roof.x + (roof.width || 0) / 2;
+            let textY = roof.textY !== undefined ? roof.textY : roof.y + (roof.height || 0) / 2;
 
-            // 🧮 АВТОМАТИЧНИЙ РОЗРАХУНОК ЦЕНТРОЇДА ДЛЯ СКЛАДНИХ ПОЛІГОНІВ
-            if (roof.points) {
+            if (roof.points && roof.textX === undefined && roof.textY === undefined) {
               const pairs = roof.points.trim().split(/\s+/);
-              let sumX = 0;
-              let sumY = 0;
-              let count = 0;
-
-              pairs.forEach(pair => {
+              let sumX = 0, sumY = 0, count = 0;
+              pairs.forEach((pair: string) => { 
                 const [strX, strY] = pair.split(',');
                 const numX = parseFloat(strX);
                 const numY = parseFloat(strY);
-                
-                if (!isNaN(numX) && !isNaN(numY)) {
-                  sumX += numX;
-                  sumY += numY;
-                  count++;
-                }
+                if (!isNaN(numX) && !isNaN(numY)) { sumX += numX; sumY += numY; count++; }
               });
-
-              if (count > 0) {
-                textX = sumX / count; // Обчислюємо середній геометричний X
-                textY = sumY / count; // Обчислюємо середній геометричний Y
-              }
-            } else {
-              // 📐 Класичний центр для звичайних прямокутників
-              textX = roof.x + (roof.width || 0) / 2;
-              textY = roof.y + (roof.height || 0) / 2;
+              if (count > 0) { textX = sumX / count; textY = sumY / count; }
             }
 
             return (
               <G key={roof.id}>
                 {roof.points ? (
-                  /* 🔷 Рендеринг шестикутника або іншої складної форми */
-                  <Polygon
-                    points={roof.points}
-                    fill="url(#diagonalHatch)"
-                    stroke="#CBD5E1"
-                    strokeWidth="4"
-                    strokeDasharray="15, 10"
-                    pointerEvents="none"
-                  />
+                  <Polygon points={roof.points} fill="url(#diagonalHatch)" stroke="#CBD5E1" strokeWidth="4" strokeDasharray="15, 10" pointerEvents="none" />
                 ) : (
-                  /* ⬜️ Рендеринг класичного прямокутника */
-                  <Rect 
-                    x={roof.x} 
-                    y={roof.y} 
-                    width={roof.width || 0} 
-                    height={roof.height || 0} 
-                    fill="url(#diagonalHatch)" 
-                    stroke="#CBD5E1" 
-                    strokeWidth="4" 
-                    strokeDasharray="15, 10"
-                    rx="8"
-                    pointerEvents="none"
-                  />
+                  <Rect x={roof.x} y={roof.y} width={roof.width || 0} height={roof.height || 0} fill="url(#diagonalHatch)" stroke="#CBD5E1" strokeWidth="4" strokeDasharray="15, 10" rx="8" pointerEvents="none" />
                 )}
-
-                {/* 🔥 АВТОМАТИЧНИЙ НАДПИС: Стає строго в розрахований геометричний центр */}
-                <SvgText 
-                  x={textX} 
-                  y={textY} 
-                  fill="#475569" // Чіткий Slate колір, що добре читається поверх ліній штриховки
-                  fontSize={55}   
-                  fontWeight="bold" 
-                  textAnchor="middle"
-                  alignmentBaseline="central" 
-                  pointerEvents="none"
-                >
+                <SvgText x={textX} y={textY} fill="#475569" fontSize={55} fontWeight="bold" textAnchor="middle" alignmentBaseline="central" pointerEvents="none">
                   {roof.label}
                 </SvgText>
               </G>
@@ -194,45 +146,62 @@ export default function MapCanvas({
           )}
 
           {staticLabels && staticLabels.map((label) => (
-            <SvgText
-              key={label.id}
-              x={label.x}
-              y={label.y}
-              fill={label.color || '#9CA3AF'}
-              fontSize={label.fontSize || 60}
-              fontWeight="bold"
-              textAnchor="middle"
-              alignmentBaseline="middle"
-              pointerEvents="none"
-            >
+            <SvgText key={label.id} x={label.x} y={label.y} fill={label.color || '#9CA3AF'} fontSize={label.fontSize || 60} fontWeight="bold" textAnchor="middle" alignmentBaseline="middle" pointerEvents="none">
               {label.text}
             </SvgText>
           ))}
 
+          {/* 🔥 РЕНДЕР КІМНАТ ТА БУДІВЕЛЬ (Підтримує і Rect, і Polygon) */}
           {rooms.map((room) => {
             const isActive = room.id === targetRoomId;
+            
+            // 🔥 РУЧНЕ АБО АВТОМАТИЧНЕ ЦЕНТРУВАННЯ ТЕКСТУ
+            let textX = room.textX !== undefined ? room.textX : room.x + (room.width || 0) / 2;
+            let textY = room.textY !== undefined ? room.textY : room.y + (room.height || 0) / 2;
+
+            if (room.points && room.textX === undefined && room.textY === undefined) {
+              const pairs = room.points.trim().split(/\s+/);
+              let sumX = 0, sumY = 0, count = 0;
+              pairs.forEach((pair: string) => { 
+                const [strX, strY] = pair.split(',');
+                const numX = parseFloat(strX);
+                const numY = parseFloat(strY);
+                if (!isNaN(numX) && !isNaN(numY)) { sumX += numX; sumY += numY; count++; }
+              });
+              if (count > 0) { textX = sumX / count; textY = sumY / count; }
+            }
+
             const lines = (room.label || '').split('\n');
-            const lineHeight = 60;
-            const startY = room.y + (room.height / 2) - ((lines.length - 1) * lineHeight / 2) + 20;
+            const customFontSize = room.fontSize || 50; // Дозволяє робити текст на будівлях більшим
+            const lineHeight = customFontSize * 1.3;
+            const startY = textY - ((lines.length - 1) * lineHeight / 2) + (customFontSize / 3);
 
             return (
               <G key={room.id} onPress={() => handleRoomPress(room.id)}>
-                <Rect 
-                  x={room.x} y={room.y} width={room.width} height={room.height} 
-                  fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 
-                  stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
-                />
+                {room.points ? (
+                  <Polygon 
+                    points={room.points}
+                    fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 
+                    stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" 
+                  />
+                ) : (
+                  <Rect 
+                    x={room.x} y={room.y} width={room.width} height={room.height} 
+                    fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 
+                    stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
+                  />
+                )}
                 
                 <SvgText 
-                  x={room.x + (room.width / 2)} y={startY} 
+                  x={textX} y={startY} 
                   fill={isActive ? Colors.white : Colors.textMain} 
-                  fontSize={45} fontWeight="bold" textAnchor="middle"
+                  fontSize={customFontSize} fontWeight="bold" textAnchor="middle"
                   rotation={room.rotateText ? -90 : 0}
-                  originX={room.x + (room.width / 2)}
-                  originY={room.y + (room.height / 2)}
+                  originX={textX}
+                  originY={textY}
                 >
                   {lines.map((line: string, index: number) => (
-                    <TSpan key={index} x={room.x + (room.width / 2)} dy={index === 0 ? 0 : lineHeight}>
+                    <TSpan key={index} x={textX} dy={index === 0 ? 0 : lineHeight}>
                       {line}
                     </TSpan>
                   ))}
@@ -245,7 +214,7 @@ export default function MapCanvas({
             <Path d={routePath} stroke={Colors.primary} strokeWidth="24" strokeDasharray="40, 30" fill="none" strokeLinejoin="round" />
           )}
 
-          {/* ЛОГІКА ВІДОБРАЖЕННЯ ТОЧОК — ТЕПЕР ТІЛЬКИ ЧИСТІ START_POINTS */}
+          {/* СТАРТОВІ ТОЧКИ */}
           {startPoints.map((sp) => {
             const isActive = sp.id === activeStartId;
             const fillColor = isActive ? Colors.error : Colors.primary;

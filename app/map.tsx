@@ -6,7 +6,6 @@ import { Colors } from '../constants/theme';
 
 import MapCanvas from '../components/MapCanvas';
 
-// 🔥 Глушимо візуальні сповіщення на екрані
 LogBox.ignoreLogs([
   'Unknown event handler property',
   'Invalid DOM property',
@@ -15,22 +14,17 @@ LogBox.ignoreLogs([
   'useNativeDriver'
 ]);
 
-// 🔥 РОЗУМНИЙ фільтр для помилок
 const originalConsoleError = console.error;
 console.error = (...args) => {
   const msg = typeof args[0] === 'string' ? args[0] : '';
   const param1 = typeof args[1] === 'string' ? args[1] : '';
-
   if (
     msg.includes('Unknown event handler property') ||
     (msg.includes('Invalid DOM property') && param1 === 'transform-origin') 
-  ) {
-    return; 
-  }
+  ) { return; }
   originalConsoleError(...args);
 };
 
-// 🔥 РОЗУМНИЙ фільтр для попереджень
 const originalConsoleWarn = console.warn;
 console.warn = (...args) => {
   const msg = typeof args[0] === 'string' ? args[0] : '';
@@ -39,20 +33,18 @@ console.warn = (...args) => {
     msg.includes('TouchableMixin') ||
     msg.includes('useNativeDriver') ||
     msg.includes('pointerEvents')
-  ) {
-    return;
-  }
+  ) { return; }
   originalConsoleWarn(...args);
 };
 
 import { findShortestPath, buildGlobalRoute, RouteStepInfo } from '../utils/navigation';
 
-// 1 ПОВЕРХ 
+import { TERRITORY_BUILDINGS, TERRITORY_VIEWBOX, TERRITORY_WALLS, TERRITORY_ROADS, TERRITORY_LABELS, TERRITORY_NODES, TERRITORY_EDGES, TERRITORY_START_POINTS } from '../constants/maps/territory';
 import { ROOMS as COMBINED_F1_ROOMS, VIEW_BOX as COMBINED_F1_VIEWBOX, WALLS_PATH as COMBINED_F1_WALLS, NODES as COMBINED_F1_NODES, EDGES as COMBINED_F1_EDGES, START_POINTS as COMBINED_F1_START_POINTS, STATIC_LABELS as COMBINED_F1_LABELS, ROAD_ZONES } from '../constants/maps/combined_floor1';
-// 2 ПОВЕРХ 
 import { ROOMS as COMBINED_F2_ROOMS, VIEW_BOX as COMBINED_F2_VIEWBOX, WALLS_PATH as COMBINED_F2_WALLS, NODES as COMBINED_F2_NODES, EDGES as COMBINED_F2_EDGES, START_POINTS as COMBINED_F2_START_POINTS, STATIC_LABELS as COMBINED_F2_LABELS, ROOF_ZONES as COMBINED_F2_ROOFS } from '../constants/maps/combined_floor2';
-// 3 ПОВЕРХ 
 import { ROOMS as COMBINED_F3_ROOMS, VIEW_BOX as COMBINED_F3_VIEWBOX, WALLS_PATH as COMBINED_F3_WALLS, NODES as COMBINED_F3_NODES, EDGES as COMBINED_F3_EDGES, START_POINTS as COMBINED_F3_START_POINTS, STATIC_LABELS as COMBINED_F3_LABELS, ROOF_ZONES as COMBINED_F3_ROOFS } from '../constants/maps/combined_floor3'; 
+import { ROOMS as WORKSHOP_F1_ROOMS, VIEW_BOX as WORKSHOP_F1_VIEWBOX, WALLS_PATH as WORKSHOP_F1_WALLS, NODES as WORKSHOP_F1_NODES, EDGES as WORKSHOP_F1_EDGES, START_POINTS as WORKSHOP_F1_START_POINTS, STATIC_LABELS as WORKSHOP_F1_LABELS, ROOF_ZONES as WORKSHOP_F1_ROOFS } from '../constants/maps/workshop_floor1';
+import { ROOMS as WORKSHOP_F2_ROOMS, VIEW_BOX as WORKSHOP_F2_VIEWBOX, WALLS_PATH as WORKSHOP_F2_WALLS, NODES as WORKSHOP_F2_NODES, EDGES as WORKSHOP_F2_EDGES, START_POINTS as WORKSHOP_F2_START_POINTS } from '../constants/maps/workshop_floor2';
 
 export interface RoomData {
   id: string;
@@ -66,17 +58,21 @@ export interface RoomData {
   width: number;
   height: number;
   targetStairs?: string;
+  points?: string; 
+  textX?: number; 
+  textY?: number; 
 }
 
 const ALL_ROOMS = [
   ...COMBINED_F1_ROOMS,
   ...COMBINED_F2_ROOMS, 
-  ...COMBINED_F3_ROOMS 
+  ...COMBINED_F3_ROOMS,
+  ...WORKSHOP_F1_ROOMS,
+  ...WORKSHOP_F2_ROOMS
 ] as RoomData[];
 
 let globalSavedStartId = 'start_main';
 
-// 🔥 ГАРЯЧІ КЛАВІШІ (Шукають строго по ID)
 const QUICK_LINKS = [
   { label: 'Директор', roomId: 'director' },
   { label: 'З.д з навч', roomId: 'deputy_1' },
@@ -87,7 +83,6 @@ const QUICK_LINKS = [
   { icon: '☕', label: 'Буфет', roomId: 'bufet' },
   { icon: '📚', label: 'Бібліотека', roomId: 'bibl' },
   { icon: '🏛️', label: 'Музей', roomId: 'museum' },
-  
 ];
 
 export default function MapScreen() {
@@ -95,7 +90,7 @@ export default function MapScreen() {
   const { width } = useWindowDimensions();
   const isNarrowSearch = width < 850; 
 
-  const [activeBuilding, setActiveBuilding] = useState(1);
+  const [activeBuilding, setActiveBuilding] = useState(1); 
   const [activeFloor, setActiveFloor] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -105,6 +100,7 @@ export default function MapScreen() {
   const [routeInfo, setRouteInfo] = useState<RouteStepInfo | null>(null);
   const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
   const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
+  const [pendingRoom, setPendingRoom] = useState<RoomData | null>(null);
 
   useEffect(() => {
     const loadStartPoint = async () => {
@@ -129,17 +125,26 @@ export default function MapScreen() {
 
       if (foundRoom) {
         if (!initialRouteConfig) {
-          setActiveBuilding(1);
-          setActiveFloor(1);
           setActiveStartId(globalSavedStartId);
-          setInitialRouteConfig({ building: 1, floor: 1, startId: globalSavedStartId });
+          setInitialRouteConfig({ building: activeBuilding, floor: activeFloor, startId: globalSavedStartId });
         }
+        setPendingRoom(foundRoom);
         setTargetRoomId(foundRoom.id);
       } else {
         setSearchQuery(roomParam);
       }
     }
   }, [params.room]);
+
+  useEffect(() => {
+    if (!routeInfo || !pendingRoom) return;
+    if (!routeInfo.isMultiFloor && !routeInfo.isMultiBuilding) {
+      if (activeBuilding !== pendingRoom.building || activeFloor !== pendingRoom.floor) {
+        setActiveBuilding(pendingRoom.building);
+        setActiveFloor(pendingRoom.floor);
+      }
+    }
+  }, [routeInfo]);
 
   const searchResults = searchQuery.trim() === '' 
     ? [] 
@@ -155,11 +160,11 @@ export default function MapScreen() {
     if (!initialRouteConfig) {
       setInitialRouteConfig({ building: activeBuilding, floor: activeFloor, startId: activeStartId });
     }
+    setPendingRoom(room as RoomData);
     setTargetRoomId(room.id);
     setSearchQuery('');
   };
 
-  // 🔥 Оновлений обробник для гарячих кнопок (Шукає по ID)
   const handleQuickLink = (targetId: string) => {
     const foundRoom = ALL_ROOMS.find(r => r.id === targetId);
     if (foundRoom) {
@@ -170,6 +175,19 @@ export default function MapScreen() {
   };
 
   const handleRoomClick = (roomId: string | null) => {
+    if (activeBuilding === 0) {
+      if (roomId === 'b_main') {
+        setActiveBuilding(1); setActiveFloor(1); setTargetRoomId(null); return;
+      }
+      if (roomId === 'b_workshop') {
+        setActiveBuilding(2); setActiveFloor(1); setTargetRoomId(null); return;
+      }
+      if (roomId && roomId.startsWith('b_') || roomId === 'stadium') {
+        alert("Детальна мапа для цього об'єкта ще в розробці!");
+        return;
+      }
+    }
+
     if (roomId) {
       if (!initialRouteConfig) {
         setInitialRouteConfig({ building: activeBuilding, floor: activeFloor, startId: activeStartId });
@@ -178,6 +196,7 @@ export default function MapScreen() {
     } else {
       setTargetRoomId(null);
       setInitialRouteConfig(null);
+      setPendingRoom(null);
       setRouteHistory([]);
     }
   };
@@ -190,13 +209,32 @@ export default function MapScreen() {
   let currentStartPoints: any[] = []; 
   let currentLabels: any[] = [];
   let currentRoofs: any[] = []; 
+  let currentRoads: any[] = []; 
 
-  if (activeFloor === 1) {
-    currentRooms = COMBINED_F1_ROOMS; currentViewBox = COMBINED_F1_VIEWBOX; currentWallsPath = COMBINED_F1_WALLS; currentNodes = COMBINED_F1_NODES; currentEdges = COMBINED_F1_EDGES; currentStartPoints = COMBINED_F1_START_POINTS || []; currentLabels = COMBINED_F1_LABELS || []; currentRoofs = []; 
-  } else if (activeFloor === 2) {
-    currentRooms = COMBINED_F2_ROOMS; currentViewBox = COMBINED_F2_VIEWBOX; currentWallsPath = COMBINED_F2_WALLS; currentNodes = COMBINED_F2_NODES; currentEdges = COMBINED_F2_EDGES; currentStartPoints = COMBINED_F2_START_POINTS || []; currentLabels = COMBINED_F2_LABELS || []; currentRoofs = COMBINED_F2_ROOFS || []; 
-  } else if (activeFloor === 3) {
-    currentRooms = COMBINED_F3_ROOMS; currentViewBox = COMBINED_F3_VIEWBOX; currentWallsPath = COMBINED_F3_WALLS; currentNodes = COMBINED_F3_NODES; currentEdges = COMBINED_F3_EDGES; currentStartPoints = COMBINED_F3_START_POINTS || []; currentLabels = COMBINED_F3_LABELS || []; currentRoofs = COMBINED_F3_ROOFS || []; 
+  if (activeBuilding === 0) {
+    currentRooms = TERRITORY_BUILDINGS;
+    currentViewBox = TERRITORY_VIEWBOX;
+    currentWallsPath = TERRITORY_WALLS;
+    currentRoads = TERRITORY_ROADS; 
+    currentLabels = TERRITORY_LABELS; 
+    currentNodes = TERRITORY_NODES;
+    currentEdges = TERRITORY_EDGES;
+    currentStartPoints = TERRITORY_START_POINTS;
+    currentRoofs = []; 
+  } else if (activeBuilding === 1) {
+    if (activeFloor === 1) {
+      currentRooms = COMBINED_F1_ROOMS; currentViewBox = COMBINED_F1_VIEWBOX; currentWallsPath = COMBINED_F1_WALLS; currentNodes = COMBINED_F1_NODES; currentEdges = COMBINED_F1_EDGES; currentStartPoints = COMBINED_F1_START_POINTS || []; currentLabels = COMBINED_F1_LABELS || []; currentRoofs = []; currentRoads = ROAD_ZONES; 
+    } else if (activeFloor === 2) {
+      currentRooms = COMBINED_F2_ROOMS; currentViewBox = COMBINED_F2_VIEWBOX; currentWallsPath = COMBINED_F2_WALLS; currentNodes = COMBINED_F2_NODES; currentEdges = COMBINED_F2_EDGES; currentStartPoints = COMBINED_F2_START_POINTS || []; currentLabels = COMBINED_F2_LABELS || []; currentRoofs = COMBINED_F2_ROOFS || []; currentRoads = ROAD_ZONES; 
+    } else if (activeFloor === 3) {
+      currentRooms = COMBINED_F3_ROOMS; currentViewBox = COMBINED_F3_VIEWBOX; currentWallsPath = COMBINED_F3_WALLS; currentNodes = COMBINED_F3_NODES; currentEdges = COMBINED_F3_EDGES; currentStartPoints = COMBINED_F3_START_POINTS || []; currentLabels = COMBINED_F3_LABELS || []; currentRoofs = COMBINED_F3_ROOFS || []; currentRoads = ROAD_ZONES; 
+    }
+  } else if (activeBuilding === 2) {
+    if (activeFloor === 1) {
+      currentRooms = WORKSHOP_F1_ROOMS; currentViewBox = WORKSHOP_F1_VIEWBOX; currentWallsPath = WORKSHOP_F1_WALLS; currentNodes = WORKSHOP_F1_NODES; currentEdges = WORKSHOP_F1_EDGES; currentStartPoints = WORKSHOP_F1_START_POINTS || []; currentLabels = WORKSHOP_F1_LABELS || []; currentRoofs = WORKSHOP_F1_ROOFS || []; currentRoads = []; 
+    } else if (activeFloor === 2) {
+      currentRooms = WORKSHOP_F2_ROOMS; currentViewBox = WORKSHOP_F2_VIEWBOX; currentWallsPath = WORKSHOP_F2_WALLS; currentNodes = WORKSHOP_F2_NODES; currentEdges = WORKSHOP_F2_EDGES; currentStartPoints = WORKSHOP_F2_START_POINTS || []; currentLabels = []; currentRoofs = []; currentRoads = []; 
+    }
   }
 
   let effectiveStartId = activeStartId;
@@ -215,43 +253,65 @@ export default function MapScreen() {
     const targetRoom = ALL_ROOMS.find(r => r.id === targetRoomId);
     if (!targetRoom) { setRouteInfo(null); return; }
 
-    const effectiveTargetBuilding = (activeFloor === 1 && targetRoom.floor === 1) ? activeBuilding : targetRoom.building;
+    const effectiveTargetBuilding = targetRoom.building;
+
     let actualTargetId = targetRoomId;
-    if (activeFloor === 1 && targetRoom.floor > 1) {
-      actualTargetId = targetRoom.targetStairs || (targetRoom.building === 1 ? 'stairs_main_b1' : 'stairs_main_b2');
+    
+    if (activeBuilding === 0) {
+        actualTargetId = targetRoom.building === 1 ? 'entrance_b1' : 'entrance_b2';
+    } 
+    else if (activeBuilding !== targetRoom.building) {
+        if (activeFloor !== 1) {
+             actualTargetId = activeBuilding === 1 ? `stairs_main_b${activeFloor}` : `stairs_workshop_f${activeFloor}`;
+        } else {
+             actualTargetId = activeBuilding === 1 ? 'entrance_b1' : 'entrance_b2'; 
+        }
+    }
+    else if (activeBuilding === targetRoom.building && activeFloor !== targetRoom.floor) {
+        actualTargetId = targetRoom.targetStairs || (targetRoom.building === 1 ? `stairs_main_b${activeFloor}` : `stairs_workshop_f${activeFloor}`);
     }
 
     let bestStartId = effectiveStartId;
     let guaranteedPath = findShortestPath(bestStartId, actualTargetId, currentNodes, currentEdges);
 
-    if (guaranteedPath.length === 0 && currentStartPoints.length > 1) {
-        for (const sp of currentStartPoints) {
-            const altPath = findShortestPath(sp.id, actualTargetId, currentNodes, currentEdges);
-            if (altPath.length > 0) {
-                bestStartId = sp.id;
-                guaranteedPath = altPath;
-                if (activeStartId !== bestStartId) {
-                  setTimeout(() => { setActiveStartId(bestStartId); globalSavedStartId = bestStartId; }, 0);
-                }
-                break;
-            }
+    if (guaranteedPath.length === 0 && currentStartPoints.length > 1 && bestStartId !== actualTargetId) {
+      for (const sp of currentStartPoints) {
+        if (sp.id === bestStartId) continue;
+        const altPath = findShortestPath(sp.id, actualTargetId, currentNodes, currentEdges);
+        if (altPath.length > 0) {
+          bestStartId = sp.id;
+          guaranteedPath = altPath;
+          if (activeStartId !== bestStartId) {
+            setTimeout(() => { setActiveStartId(bestStartId); globalSavedStartId = bestStartId; }, 0);
+          }
+          break;
         }
+      }
     }
 
-    const info = buildGlobalRoute(activeBuilding, effectiveTargetBuilding, activeFloor, targetRoom.floor, bestStartId, actualTargetId, currentNodes, currentEdges);
+    const info = buildGlobalRoute(
+      activeBuilding,
+      effectiveTargetBuilding,
+      activeFloor,
+      targetRoom.floor,
+      bestStartId,
+      actualTargetId,
+      currentNodes,
+      currentEdges
+    );
     
     if (info) {
-        let finalInstruction = info.instruction;
-        let finalNextBuilding = info.nextBuilding;
-        let finalNextFloor = info.nextFloor;
+      let finalInstruction = info.instruction;
+      let finalNextBuilding = info.nextBuilding;
+      let finalNextFloor = info.nextFloor;
 
-        if (activeFloor === 1 && targetRoom.floor > 1) {
-            finalInstruction = `Підніміться на ${targetRoom.floor} поверх ➔`;
-            finalNextBuilding = targetRoom.building;
-            finalNextFloor = targetRoom.floor;
-        }
+      if (activeFloor === 1 && targetRoom.floor > 1 && activeBuilding === targetRoom.building) {
+        finalInstruction = `Підніміться на ${targetRoom.floor} поверх ➔`;
+        finalNextBuilding = targetRoom.building;
+        finalNextFloor = targetRoom.floor;
+      }
 
-        setRouteInfo({ ...info, instruction: finalInstruction, nextBuilding: finalNextBuilding, nextFloor: finalNextFloor, pathNodes: guaranteedPath });
+      setRouteInfo({ ...info, instruction: finalInstruction, nextBuilding: finalNextBuilding, nextFloor: finalNextFloor, pathNodes: guaranteedPath });
     }
   }, [targetRoomId, activeBuilding, activeFloor, effectiveStartId, currentNodes, currentEdges]); 
 
@@ -272,13 +332,15 @@ export default function MapScreen() {
     let nextStart = routeInfo.nextStartId;
     if (targetRoomId) {
       const targetRoom = ALL_ROOMS.find(r => r.id === targetRoomId);
-      if (targetRoom && targetRoom.targetStairs) nextStart = targetRoom.targetStairs; 
+      if (targetRoom && targetRoom.targetStairs && activeBuilding === targetRoom.building && routeInfo.isMultiFloor) {
+          nextStart = targetRoom.targetStairs; 
+      }
     }
 
-    if (routeInfo.isMultiBuilding && routeInfo.nextBuilding) {
-        setActiveBuilding(routeInfo.nextBuilding); setActiveFloor(routeInfo.nextFloor || 1); setActiveStartId(nextStart); globalSavedStartId = nextStart;
+    if (routeInfo.isMultiBuilding && routeInfo.nextBuilding !== null && routeInfo.nextBuilding !== undefined) {
+      setActiveBuilding(routeInfo.nextBuilding); setActiveFloor(routeInfo.nextFloor || 1); setActiveStartId(nextStart); globalSavedStartId = nextStart;
     } else if (routeInfo.isMultiFloor && routeInfo.nextFloor) {
-        setActiveFloor(routeInfo.nextFloor); setActiveStartId(nextStart); globalSavedStartId = nextStart;
+      setActiveFloor(routeInfo.nextFloor); setActiveStartId(nextStart); globalSavedStartId = nextStart;
     }
   };
 
@@ -287,7 +349,7 @@ export default function MapScreen() {
     const newHistory = [...routeHistory];
     const previousState = newHistory.pop();
     if (previousState) {
-        setActiveBuilding(previousState.building); setActiveFloor(previousState.floor); setActiveStartId(previousState.startId); setRouteHistory(newHistory); 
+      setActiveBuilding(previousState.building); setActiveFloor(previousState.floor); setActiveStartId(previousState.startId); setRouteHistory(newHistory); 
     }
   };
 
@@ -297,30 +359,33 @@ export default function MapScreen() {
     } else {
       setActiveFloor(1); setActiveBuilding(1); setActiveStartId(globalSavedStartId); 
     }
-    setTargetRoomId(null); setSearchQuery(''); setRouteInfo(null); setRouteHistory([]); setInitialRouteConfig(null);
+    setTargetRoomId(null); setSearchQuery(''); setRouteInfo(null); setRouteHistory([]); setInitialRouteConfig(null); setPendingRoom(null);
   };
+
+  // 🔥 ВИПРАВЛЕНО: Кнопка відображається завжди, коли є ціль
+  const showInstructionBar = targetRoomId !== null;
 
   return (
     <View style={styles.container}>
       
-      {/* ЗАГОЛОВОК */}
       <Text style={styles.mapTitle}>
-        {activeFloor} поверх — <Text style={{ fontWeight: 'bold' }}>
-          {targetRoomId 
-            ? `ціль: ${(() => {
-                const r = ALL_ROOMS.find(r => r.id === targetRoomId);
-                const name = r?.description || r?.label || 'каб. ' + targetRoomId;
-                return name.replace('\n', ' ');
-              })()}` 
-            : 'Оберіть кабінет'}
+        {activeBuilding === 0 ? 'Територія коледжу — ' : `${activeFloor} поверх — `}
+        <Text style={{ fontWeight: 'bold' }}>
+          {activeBuilding === 0 
+            ? (pendingRoom ? `ціль: ${(pendingRoom.description || pendingRoom.label).replace('\n', ' ')}` : 'Оберіть корпус')
+            : (targetRoomId 
+                ? `ціль: ${(() => {
+                    const r = ALL_ROOMS.find(r => r.id === targetRoomId);
+                    const name = r?.description || r?.label || 'каб. ' + targetRoomId;
+                    return name.replace('\n', ' ');
+                  })()}` 
+                : 'Оберіть кабінет')}
         </Text>
       </Text>
 
-      {/* 🔥 ЄДИНИЙ РЯДОК: ПОШУК + КОРПУС + ПОВЕРХИ */}
       <View style={styles.topBar}>
         
-        {/* Пошуковий рядок */}
-        <View style={[styles.searchWrapper, { flex: 1, minWidth: 250, maxWidth: 370 }]}>
+        <View style={styles.searchWrapper}>
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput 
@@ -354,32 +419,54 @@ export default function MapScreen() {
           )}
         </View>
 
-        {/* Перемикачі корпусу та поверхів */}
         <View style={styles.selectorsWrapper}>
+          
           <View style={styles.tabSelector}>
-            <TouchableOpacity style={[styles.tabButton, styles.tabButtonActive]} disabled={true}>
-              <Text style={[styles.tabButtonText, styles.tabButtonTextActive]}>Головний корпус</Text>
+            <TouchableOpacity 
+              style={[styles.tabButton, activeBuilding === 1 && styles.tabButtonActive]} 
+              onPress={() => setActiveBuilding(1)}
+            >
+              <Text style={[styles.tabButtonText, activeBuilding === 1 && styles.tabButtonTextActive]}>Головний корпус</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.tabButton, activeBuilding === 2 && styles.tabButtonActive]} 
+              onPress={() => setActiveBuilding(2)}
+            >
+              <Text style={[styles.tabButtonText, activeBuilding === 2 && styles.tabButtonTextActive]}>Майстерні</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.tabButton, activeBuilding === 0 && styles.tabButtonActive]} 
+              onPress={() => { setActiveBuilding(0); setTargetRoomId(null); setPendingRoom(null); }}
+            >
+              <Text style={[styles.tabButtonText, activeBuilding === 0 && styles.tabButtonTextActive]}>Територія</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.tabSelector}>
-            {[1, 2, 3].map((floor) => (
-              <TouchableOpacity 
-                key={`f-${floor}`}
-                style={[styles.tabButton, activeFloor === floor && styles.tabButtonActive]}
-                onPress={() => setActiveFloor(floor)}
-              >
-                <Text style={[styles.tabButtonText, activeFloor === floor && styles.tabButtonTextActive]}>
-                  {floor} пов.
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {activeBuilding !== 0 && (
+            <View style={styles.tabSelector}>
+              {[1, 2, activeBuilding === 1 ? 3 : null].map((floor) => {
+                if (floor === null) return null;
+                return (
+                  <TouchableOpacity 
+                    key={`f-${floor}`}
+                    style={[styles.tabButton, activeFloor === floor && styles.tabButtonActive]}
+                    onPress={() => setActiveFloor(floor)}
+                  >
+                    <Text style={[styles.tabButtonText, activeFloor === floor && styles.tabButtonTextActive]}>
+                      {floor} пов.
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
         </View>
 
       </View>
 
-      {/* 🔥 ГАРЯЧІ КНОПКИ ШВИДКОГО ДОСТУПУ */}
       <View style={styles.hotkeysPanel}>
         <Text style={styles.hotkeysTitle}>Швидкий пошук:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hotkeysScroll}>
@@ -389,14 +476,13 @@ export default function MapScreen() {
               style={styles.hotkeyBtn} 
               onPress={() => handleQuickLink(link.roomId)} 
             >
-              <Text style={styles.hotkeyIcon}>{link.icon}</Text>
+              {link.icon && <Text style={styles.hotkeyIcon}>{link.icon}</Text>}
               <Text style={styles.hotkeyText}>{link.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* КАРТА */}
       <View style={styles.mapArea}>
         <MapCanvas 
           rooms={currentRooms}
@@ -409,27 +495,26 @@ export default function MapScreen() {
           onRoomSelect={handleRoomClick}
           staticLabels={currentLabels} 
           roofZones={currentRoofs} 
-          roadZones={ROAD_ZONES}
+          roadZones={currentRoads}
         />
       </View>
 
-      {/* ПАНЕЛЬ ІНСТРУКЦІЙ ДЛЯ МАРШРУТУ */}
-      {(routeInfo?.isMultiFloor || routeInfo?.isMultiBuilding || targetRoomId) && (
+      {showInstructionBar && (
         <View style={styles.instructionContainer}>
           {routeHistory.length > 0 && (
-              <TouchableOpacity style={[styles.instructionButton, styles.stepBackButton]} onPress={handleStepBack}>
-                  <Text style={styles.stepBackText}>⬅ Крок назад</Text>
-              </TouchableOpacity>
+            <TouchableOpacity style={[styles.instructionButton, styles.stepBackButton]} onPress={handleStepBack}>
+              <Text style={styles.stepBackText}>⬅ Крок назад</Text>
+            </TouchableOpacity>
           )}
 
           {routeInfo?.isMultiFloor || routeInfo?.isMultiBuilding ? (
-              <TouchableOpacity style={styles.instructionButton} onPress={handleFloorChangeInstruction}>
-                  <Text style={styles.instructionText}>{routeInfo.instruction}</Text>
-              </TouchableOpacity>
+            <TouchableOpacity style={styles.instructionButton} onPress={handleFloorChangeInstruction}>
+              <Text style={styles.instructionText}>{routeInfo.instruction}</Text>
+            </TouchableOpacity>
           ) : (
-              <TouchableOpacity style={[styles.instructionButton, styles.returnButton]} onPress={handleResetRoute}>
-                  <Text style={styles.instructionText}> Завершити маршрут</Text>
-              </TouchableOpacity>
+            <TouchableOpacity style={[styles.instructionButton, styles.returnButton]} onPress={handleResetRoute}>
+              <Text style={styles.instructionText}> Завершити маршрут</Text>
+            </TouchableOpacity>
           )}
         </View>
       )}
@@ -439,53 +524,53 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 40, backgroundColor: Colors.background },
-  
-  mapTitle: { 
-    fontSize: 22, 
-    color: Colors.textMain, 
-    marginBottom: 16, 
-    fontWeight: '500'
-  },
+  mapTitle: { fontSize: 22, color: Colors.textMain, marginBottom: 16, fontWeight: '500' },
   
   topBar: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    justifyContent: 'space-between', 
+    justifyContent: 'flex-start', 
     marginBottom: 20, 
     zIndex: 50, 
-    elevation: 50,
-    width: '100%',
-    gap: 16, 
-    flexWrap: 'wrap', 
+    elevation: 50, 
+    width: '100%', 
+    gap: 24, 
+    flexWrap: 'wrap' 
   },
   
-  searchWrapper: { flex: 1, zIndex: 50, elevation: 50 },
+  searchWrapper: { 
+    width: '100%', 
+    maxWidth: 400, 
+    zIndex: 50, 
+    elevation: 50 
+  },
+  
   searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   searchIcon: { fontSize: 18, marginRight: 10 },
   searchInput: { flex: 1, fontSize: 18, color: Colors.textMain, outlineStyle: 'none' } as any,
-  searchResults: { 
-    position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: Colors.white, 
-    borderRadius: 12, marginTop: 8, borderWidth: 1, borderColor: '#E2E8F0', 
-    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)', elevation: 5, overflow: 'hidden' 
-  },
+  searchResults: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: Colors.white, borderRadius: 12, marginTop: 8, borderWidth: 1, borderColor: '#E2E8F0', boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)', elevation: 5, overflow: 'hidden' },
   searchResultItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   searchResultText: { fontSize: 18, fontWeight: 'bold', color: Colors.textMain, flexShrink: 1, marginRight: 10 }, 
   searchResultSubtext: { fontSize: 14, color: Colors.textSecondary },
   
-  selectorsWrapper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  selectorsWrapper: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-start', 
+    gap: 12 
+  },
+  
   tabSelector: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 12, padding: 4 },
   tabButton: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   tabButtonActive: { backgroundColor: Colors.white, boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)', elevation: 2 },
   tabButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textSecondary },
   tabButtonTextActive: { color: Colors.primary },
-
+  
   hotkeysPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, width: '100%', zIndex: 1 },
   hotkeysTitle: { fontSize: 16, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 12 },
   hotkeysScroll: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingRight: 20 },
   hotkeyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', gap: 8 },
   hotkeyIcon: { fontSize: 16 },
   hotkeyText: { fontSize: 15, fontWeight: '600', color: Colors.textMain },
-
   mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 0, backgroundColor: Colors.white, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
   instructionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 20, zIndex: 10 },
   instructionButton: { backgroundColor: Colors.primary, paddingVertical: 16, paddingHorizontal: 32, borderRadius: 30, boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', elevation: 8 },
