@@ -240,7 +240,12 @@ export default function MapScreen() {
   let effectiveStartId = activeStartId;
   if (currentStartPoints && currentStartPoints.length > 0) {
     const isValidStart = currentStartPoints.some(sp => sp.id === effectiveStartId);
-    if (!isValidStart) { effectiveStartId = currentStartPoints[0].id; }
+    if (!isValidStart) {
+      const isValidNode = currentNodes.some(n => n.id === effectiveStartId);
+      if (!isValidNode) {
+        effectiveStartId = currentStartPoints[0].id;
+      }
+    }
   } else {
     effectiveStartId = 'none';
   }
@@ -523,59 +528,68 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 40, backgroundColor: Colors.background },
-  mapTitle: { fontSize: 22, color: Colors.textMain, marginBottom: 16, fontWeight: '500' },
+  // Зменшено загальний відступ з 30 до 20
+  container: { flex: 1, padding: 20, backgroundColor: Colors.background },
+  // Зменшено шрифт з 22 до 20, і відступ з 16 до 12
+  mapTitle: { fontSize: 20, color: Colors.textMain, marginBottom: 12, fontWeight: '500' },
   
   topBar: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'flex-start', 
-    marginBottom: 20, 
+    marginBottom: 12, // Зменшено з 16
     zIndex: 50, 
     elevation: 50, 
     width: '100%', 
-    gap: 24, 
+    gap: 16, 
     flexWrap: 'wrap' 
   },
   
   searchWrapper: { 
     width: '100%', 
-    maxWidth: 400, 
+    maxWidth: 320, // Ще трохи звузив (було 350)
     zIndex: 50, 
     elevation: 50 
   },
   
-  searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
-  searchIcon: { fontSize: 18, marginRight: 10 },
-  searchInput: { flex: 1, fontSize: 18, color: Colors.textMain, outlineStyle: 'none' } as any,
-  searchResults: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: Colors.white, borderRadius: 12, marginTop: 8, borderWidth: 1, borderColor: '#E2E8F0', boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)', elevation: 5, overflow: 'hidden' },
-  searchResultItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  searchResultText: { fontSize: 18, fontWeight: 'bold', color: Colors.textMain, flexShrink: 1, marginRight: 10 }, 
-  searchResultSubtext: { fontSize: 14, color: Colors.textSecondary },
+  // Пошук: менші відступи (16/8 замість 20/12) та радіус (10 замість 12)
+  searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  searchIcon: { fontSize: 16, marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 16, color: Colors.textMain, outlineStyle: 'none' } as any,
+  searchResults: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: Colors.white, borderRadius: 10, marginTop: 4, borderWidth: 1, borderColor: '#E2E8F0', boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)', elevation: 5, overflow: 'hidden' },
+  searchResultItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  searchResultText: { fontSize: 16, fontWeight: 'bold', color: Colors.textMain, flexShrink: 1, marginRight: 10 }, 
+  searchResultSubtext: { fontSize: 12, color: Colors.textSecondary },
   
   selectorsWrapper: { 
     flexDirection: 'row', 
     alignItems: 'flex-start', 
-    gap: 12 
+    gap: 10 
   },
   
-  tabSelector: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 12, padding: 4 },
-  tabButton: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  // Вкладки: менші відступи і радіуси
+  tabSelector: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 8, padding: 3 },
+  tabButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 },
   tabButtonActive: { backgroundColor: Colors.white, boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)', elevation: 2 },
-  tabButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textSecondary },
+  tabButtonText: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary },
   tabButtonTextActive: { color: Colors.primary },
   
-  hotkeysPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, width: '100%', zIndex: 1 },
-  hotkeysTitle: { fontSize: 16, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 12 },
-  hotkeysScroll: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingRight: 20 },
-  hotkeyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', gap: 8 },
-  hotkeyIcon: { fontSize: 16 },
-  hotkeyText: { fontSize: 15, fontWeight: '600', color: Colors.textMain },
-  mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 0, backgroundColor: Colors.white, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
-  instructionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 20, zIndex: 10 },
-  instructionButton: { backgroundColor: Colors.primary, paddingVertical: 16, paddingHorizontal: 32, borderRadius: 30, boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', elevation: 8 },
+  // Швидкий пошук: компактніші кнопки
+  hotkeysPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, width: '100%', zIndex: 1 },
+  hotkeysTitle: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 10 },
+  hotkeysScroll: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 20 },
+  hotkeyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
+  hotkeyIcon: { fontSize: 14 },
+  hotkeyText: { fontSize: 14, fontWeight: '600', color: Colors.textMain },
+  
+  // Карта: зменшено радіус з 24 до 16
+  mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 0, backgroundColor: Colors.white, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
+  
+  // Нижні великі кнопки: значно зменшені
+  instructionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, zIndex: 10 }, // Відступи і gap менші
+  instructionButton: { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 24, boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', elevation: 8 }, // Зменшено з 16/32
   returnButton: { backgroundColor: '#475569' },
-  instructionText: { color: Colors.white, fontSize: 20, fontWeight: 'bold' },
-  stepBackButton: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.primary, paddingVertical: 14 },
-  stepBackText: { color: Colors.primary, fontSize: 20, fontWeight: 'bold' }
+  instructionText: { color: Colors.white, fontSize: 16, fontWeight: 'bold' }, // Шрифт зменшено з 20 до 16
+  stepBackButton: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.primary, paddingVertical: 10 }, // Зменшено з 14
+  stepBackText: { color: Colors.primary, fontSize: 16, fontWeight: 'bold' } // Шрифт зменшено з 20 до 16
 });
