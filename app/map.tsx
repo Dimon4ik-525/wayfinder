@@ -96,6 +96,7 @@ export default function MapScreen() {
   
   const [targetRoomId, setTargetRoomId] = useState<string | null>(null);
   const [activeStartId, setActiveStartId] = useState(globalSavedStartId);
+  const [isAdmissionMode, setIsAdmissionMode] = useState(false);
 
   const [routeInfo, setRouteInfo] = useState<RouteStepInfo | null>(null);
   const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
@@ -110,6 +111,8 @@ export default function MapScreen() {
           setActiveStartId(saved);
           globalSavedStartId = saved;
         }
+        const admissionSaved = await AsyncStorage.getItem('admissionMode');
+        if (admissionSaved === 'true') setIsAdmissionMode(true);
       } catch (e) {
         console.warn("Не вдалося завантажити налаштування входу", e);
       }
@@ -174,6 +177,11 @@ export default function MapScreen() {
     }
   };
 
+  const handleStartPointClick = (startId: string) => {
+    setActiveStartId(startId);
+    globalSavedStartId = startId;
+  };
+
   const handleRoomClick = (roomId: string | null) => {
     if (activeBuilding === 0) {
       if (roomId === 'b_main') {
@@ -236,6 +244,18 @@ export default function MapScreen() {
       currentRooms = WORKSHOP_F2_ROOMS; currentViewBox = WORKSHOP_F2_VIEWBOX; currentWallsPath = WORKSHOP_F2_WALLS; currentNodes = WORKSHOP_F2_NODES; currentEdges = WORKSHOP_F2_EDGES; currentStartPoints = WORKSHOP_F2_START_POINTS || []; currentLabels = []; currentRoofs = []; currentRoads = []; 
     }
   }
+
+  const ADMISSION_OVERRIDES: Record<string, { label: string; description: string }> = {
+    '12':   { label: 'Приймальна\nдля\nФМБ',            description: 'Приймальна для фахових молодших бакалаврів' },
+    'chit': { label: 'Приймальна\nдля\nкваліфікованих', description: 'Приймальна для кваліфікованих' },
+  };
+  const displayRooms = isAdmissionMode
+    ? currentRooms.map(r =>
+        ADMISSION_OVERRIDES[r.id]
+          ? { ...r, label: ADMISSION_OVERRIDES[r.id].label, description: ADMISSION_OVERRIDES[r.id].description }
+          : r
+      )
+    : currentRooms;
 
   let effectiveStartId = activeStartId;
   if (currentStartPoints && currentStartPoints.length > 0) {
@@ -381,8 +401,10 @@ export default function MapScreen() {
             : (targetRoomId 
                 ? `ціль: ${(() => {
                     const r = ALL_ROOMS.find(r => r.id === targetRoomId);
-                    const name = r?.description || r?.label || 'каб. ' + targetRoomId;
-                    return name.replace('\n', ' ');
+                    const name = isAdmissionMode && ADMISSION_OVERRIDES[targetRoomId]
+                      ? ADMISSION_OVERRIDES[targetRoomId].description
+                      : (r?.description || r?.label || 'каб. ' + targetRoomId);
+                    return name.replaceAll('\n', ' ');
                   })()}` 
                 : 'Оберіть кабінет')}
         </Text>
@@ -490,7 +512,7 @@ export default function MapScreen() {
 
       <View style={styles.mapArea}>
         <MapCanvas 
-          rooms={currentRooms}
+          rooms={displayRooms}
           startPoints={currentStartPoints}
           activeStartId={effectiveStartId}
           viewBox={currentViewBox}
@@ -498,6 +520,7 @@ export default function MapScreen() {
           targetRoomId={targetRoomId}
           routePath={generateRoutePathString()}
           onRoomSelect={handleRoomClick}
+          onStartPointSelect={activeBuilding === 1 && activeFloor === 1 ? undefined : handleStartPointClick}
           staticLabels={currentLabels} 
           roofZones={currentRoofs} 
           roadZones={currentRoads}

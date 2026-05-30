@@ -7,12 +7,15 @@ import { Colors } from '../constants/theme';
 export default function SettingsScreen() {
   const router = useRouter();
   const [selectedStart, setSelectedStart] = useState('start_main');
+  const [isAdmissionMode, setIsAdmissionMode] = useState(false);
 
   // Завантажуємо збережений вхід при відкритті екрану
   useEffect(() => {
     const loadSettings = async () => {
       const saved = await AsyncStorage.getItem('userStartEntrance');
       if (saved) setSelectedStart(saved);
+      const admissionSaved = await AsyncStorage.getItem('admissionMode');
+      if (admissionSaved === 'true') setIsAdmissionMode(true);
     };
     loadSettings();
   }, []);
@@ -21,6 +24,12 @@ export default function SettingsScreen() {
   const handleSelect = async (id: string) => {
     setSelectedStart(id);
     await AsyncStorage.setItem('userStartEntrance', id);
+  };
+
+  const handleToggleAdmission = async () => {
+    const newVal = !isAdmissionMode;
+    setIsAdmissionMode(newVal);
+    await AsyncStorage.setItem('admissionMode', String(newVal));
   };
 
   return (
@@ -58,6 +67,20 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🎓 Режим приймальної комісії</Text>
+        <Text style={styles.cardSubtitle}>
+          Кабінет 12 стає «Приймальна для ФМБ», а Читальна зала — «Приймальна для кваліфікованих».
+        </Text>
+        <TouchableOpacity
+          style={[styles.toggleBtn, isAdmissionMode && styles.toggleBtnActive]}
+          onPress={handleToggleAdmission}
+        >
+          <Text style={[styles.toggleText, isAdmissionMode && styles.toggleTextActive]}>
+            {isAdmissionMode ? '✅ Увімкнено' : '⬜ Вимкнено'}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -77,5 +100,9 @@ const styles = StyleSheet.create({
   optionBtn: { flex: 1, padding: 20, borderRadius: 16, backgroundColor: '#F8FAFC', borderWidth: 2, borderColor: '#E2E8F0', alignItems: 'center' },
   optionBtnActive: { backgroundColor: Colors.primaryGhost, borderColor: Colors.primary },
   optionText: { fontSize: 18, fontWeight: 'bold', color: Colors.textSecondary },
-  optionTextActive: { color: Colors.primary }
+  optionTextActive: { color: Colors.primary },
+  toggleBtn: { padding: 20, borderRadius: 16, backgroundColor: '#F8FAFC', borderWidth: 2, borderColor: '#E2E8F0', alignItems: 'center' },
+  toggleBtnActive: { backgroundColor: Colors.primaryGhost, borderColor: Colors.primary },
+  toggleText: { fontSize: 18, fontWeight: 'bold', color: Colors.textSecondary },
+  toggleTextActive: { color: Colors.primary },
 });

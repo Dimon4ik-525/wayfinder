@@ -80,6 +80,41 @@ export interface RouteStepInfo {
   nextStartId: string;      
 }
 
+// 🔥 Знаходить найближчі сходи від поточної позиції
+// Якщо startId вже є сходами — одразу повертає їх (без пошуку)
+function findNearestStairs(
+  startId: string,
+  building: number,
+  nodes: MapNode[],
+  edges: MapEdge[]
+): { stairsId: string; pathToStairs: MapNode[] } {
+  if (building === 1) {
+    const options = ['stairs_main_b1', 'stairs_main_b2'];
+    
+    // 🔥 Якщо вже стоїмо на одних зі сходів — повертаємо їх одразу
+    if (options.includes(startId)) {
+      return { stairsId: startId, pathToStairs: [] };
+    }
+
+    let bestStairs = options[0];
+    let bestLen = Infinity;
+    let bestPath: MapNode[] = [];
+
+    for (const stairsId of options) {
+      const path = findShortestPath(startId, stairsId, nodes, edges);
+      if (path.length > 0 && path.length < bestLen) {
+        bestLen = path.length;
+        bestStairs = stairsId;
+        bestPath = path;
+      }
+    }
+    return { stairsId: bestStairs, pathToStairs: bestPath };
+  } else {
+    const path = findShortestPath(startId, 'stairs_workshop_f1', nodes, edges);
+    return { stairsId: 'stairs_workshop_f1', pathToStairs: path };
+  }
+}
+
 export function buildGlobalRoute(
   currentBuilding: number, 
   targetBuilding: number, 
@@ -124,8 +159,8 @@ export function buildGlobalRoute(
     
     // Крок 1.1: Якщо ми не на 1-му поверсі, спершу треба спуститись!
     if (currentFloor !== 1) {
-      let stairsId = currentBuilding === 1 ? 'stairs_main_b1' : 'stairs_workshop_f2';
-      const pathToStairs = findShortestPath(startId, stairsId, currentNodes, currentEdges);
+      // 🔥 Знаходимо найближчі сходи від поточної позиції
+      const { stairsId, pathToStairs } = findNearestStairs(startId, currentBuilding, currentNodes, currentEdges);
       return {
         pathNodes: pathToStairs,
         isMultiFloor: true,
@@ -159,34 +194,8 @@ export function buildGlobalRoute(
   // СЦЕНАРІЙ 2: Ми у потрібному корпусі, але на ІНШОМУ ПОВЕРСІ
   // =====================================================================
   if (currentFloor !== targetFloor) {
-    let stairsId = '';
-    let pathToStairs: MapNode[] = [];
-
-    if (currentBuilding === 1) {
-      // 1. Будуємо шляхи до ОБОХ сходів
-      const path1 = findShortestPath(startId, 'stairs_main_b1', currentNodes, currentEdges);
-      const path2 = findShortestPath(startId, 'stairs_main_b2', currentNodes, currentEdges);
-      
-      // 2. Визначаємо довжину кожного шляху (якщо шляху немає, ставимо Безкінечність)
-      const len1 = path1.length > 0 ? path1.length : Infinity;
-      const len2 = path2.length > 0 ? path2.length : Infinity;
-
-      // 3. Порівнюємо і вибираємо КОРОТШИЙ
-      if (len1 <= len2 && len1 !== Infinity) {
-        pathToStairs = path1;
-        stairsId = 'stairs_main_b1';
-      } else if (len2 !== Infinity) {
-        pathToStairs = path2;
-        stairsId = 'stairs_main_b2';
-      } else {
-        // Запобіжник: якщо раптом немає шляху до жодних, дефолтно ставимо перші
-        stairsId = 'stairs_main_b1'; 
-      }
-    } else {
-      // Для майстерень залишаємо одні сходи
-      stairsId = 'stairs_workshop_f1'; 
-      pathToStairs = findShortestPath(startId, stairsId, currentNodes, currentEdges);
-    }
+    // 🔥 Знаходимо найближчі сходи (враховує випадок коли вже стоїмо на них)
+    const { stairsId, pathToStairs } = findNearestStairs(startId, currentBuilding, currentNodes, currentEdges);
 
     const actionWord = targetFloor > currentFloor ? 'Підніміться' : 'Спустіться';
 

@@ -16,6 +16,7 @@ export interface MapCanvasProps {
   staticLabels?: { id: string, text: string, x: number, y: number, fontSize?: number, color?: string }[];
   roofZones?: any[]; // 🔥 Дозволяємо передавати будь-які об'єкти даху або пустий масив
   roadZones?: string[];
+  onStartPointSelect?: (startId: string) => void;
 }
 
 export default function MapCanvas({ 
@@ -29,7 +30,8 @@ export default function MapCanvas({
   onRoomSelect,
   staticLabels,
   roofZones = [],
-  roadZones = [] 
+  roadZones = [],
+  onStartPointSelect,
 }: MapCanvasProps) {
 
   const zoomRef = useRef<any>(null);
@@ -224,8 +226,14 @@ export default function MapCanvas({
             if (!sp.label && sp.id === 'start_entrance') inactiveText = 'ВХІД №2';
 
             return (
-              <G key={`start-${sp.id}`} x={sp.x} y={sp.y}>
-                <Circle cx="0" cy="0" r="80" fill={fillColor} opacity="0.2" />
+              <G
+                key={`start-${sp.id}`}
+                x={sp.x}
+                y={sp.y}
+                onPress={() => !isActive && onStartPointSelect?.(sp.id)}
+              >
+                <Circle cx="0" cy="0" r="120" fill={fillColor} opacity={0} />
+                <Circle cx="0" cy="0" r="80" fill={fillColor} opacity={isActive ? 0.2 : 0.1} />
                 <Circle cx="0" cy="0" r="30" fill={fillColor} />
                 <SvgText x="0" y="100" fill={fillColor} fontSize={42} fontWeight="bold" textAnchor="middle">
                   {isActive ? 'ВИ ТУТ' : inactiveText}
