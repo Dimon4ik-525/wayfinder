@@ -15,7 +15,7 @@ export default function RootLayout() {
   const isMobile = width < 500;   
   const isCollapsed = width < 900 && !isMobile; 
 
-  const dynamicSidebarWidth = isCollapsed ? 90 : Math.min(Math.max(width * 0.28, 240), 320);
+  const dynamicSidebarWidth = isCollapsed ? 90 : Math.min(Math.max(width * 0.25, 220), 280);
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -178,7 +178,7 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, flexDirection: 'row', backgroundColor: Colors.background },
+  container: { flex: 1, flexDirection: 'row', height: '100%', backgroundColor: Colors.background },
   
   sidebar: { 
     backgroundColor: Colors.sidebar, 
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   },
   settingsIcon: { fontSize: 20 },
 
-  mainContent: { flex: 1, position: 'relative' },
+  mainContent: { flex: 1, position: 'relative', height: '100%' },
 
   mobileBottomBar: {
     position: 'absolute',

@@ -552,7 +552,7 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   // Зменшено загальний відступ з 30 до 20
-  container: { flex: 1, padding: 20, backgroundColor: Colors.background },
+  container: { flex: 1, padding: 20, backgroundColor: Colors.background, height: '100%' },
   // Зменшено шрифт з 22 до 20, і відступ з 16 до 12
   mapTitle: { fontSize: 20, color: Colors.textMain, marginBottom: 12, fontWeight: '500' },
   
