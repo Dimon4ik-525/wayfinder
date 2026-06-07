@@ -123,12 +123,13 @@ export default function RootLayout() {
           </View>
 
           {/* ВІДЖЕТ ПОДІЙ  + ВІДЖЕТ ПРИЙМАЛЬНОЇ КОМІСІЇ */}
+          
           {!isCollapsed && (
             <View style={{ flex: 1, width: '100%' }}>
-            <View style={styles.widgetWrapper}>
-            <EventsWidget />
-            </View>
               <AdmissionBanner />
+              <View style={styles.widgetWrapper}>
+                <EventsWidget />
+              </View>
             </View>
           )}
 
@@ -215,12 +216,13 @@ const styles = StyleSheet.create({
   menuTextActive: { color: Colors.white, fontWeight: 'bold' },
 
   widgetWrapper: {
+    flex: 1,
     width: '100%',
     paddingHorizontal: 15,
-    marginTop: 10,      // ← відстань зверху (від меню до анонсів)
-    marginBottom: 10,   // ← відстань знизу (від анонсів до годинника)
+    marginTop: 10,
+    marginBottom: 10,
     justifyContent: 'center',
-    overflow: 'hidden', 
+    overflow: 'hidden',
   },
 
   // 🔥 ОНОВЛЕНО: Блок для годинника та налаштувань
