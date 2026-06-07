@@ -45,6 +45,9 @@ import { ROOMS as COMBINED_F2_ROOMS, VIEW_BOX as COMBINED_F2_VIEWBOX, WALLS_PATH
 import { ROOMS as COMBINED_F3_ROOMS, VIEW_BOX as COMBINED_F3_VIEWBOX, WALLS_PATH as COMBINED_F3_WALLS, NODES as COMBINED_F3_NODES, EDGES as COMBINED_F3_EDGES, START_POINTS as COMBINED_F3_START_POINTS, STATIC_LABELS as COMBINED_F3_LABELS, ROOF_ZONES as COMBINED_F3_ROOFS } from '../constants/maps/combined_floor3'; 
 import { ROOMS as WORKSHOP_F1_ROOMS, VIEW_BOX as WORKSHOP_F1_VIEWBOX, WALLS_PATH as WORKSHOP_F1_WALLS, NODES as WORKSHOP_F1_NODES, EDGES as WORKSHOP_F1_EDGES, START_POINTS as WORKSHOP_F1_START_POINTS, STATIC_LABELS as WORKSHOP_F1_LABELS, ROOF_ZONES as WORKSHOP_F1_ROOFS } from '../constants/maps/workshop_floor1';
 import { ROOMS as WORKSHOP_F2_ROOMS, VIEW_BOX as WORKSHOP_F2_VIEWBOX, WALLS_PATH as WORKSHOP_F2_WALLS, NODES as WORKSHOP_F2_NODES, EDGES as WORKSHOP_F2_EDGES, START_POINTS as WORKSHOP_F2_START_POINTS } from '../constants/maps/workshop_floor2';
+import { ROOMS as SPORTS_F1_ROOMS, VIEW_BOX as SPORTS_F1_VIEWBOX, WALLS_PATH as SPORTS_F1_WALLS, NODES as SPORTS_F1_NODES, EDGES as SPORTS_F1_EDGES, START_POINTS as SPORTS_F1_START_POINTS } from '../constants/maps/sports_floor1';
+import { ROOMS as SPORTS_F2_ROOMS, VIEW_BOX as SPORTS_F2_VIEWBOX, WALLS_PATH as SPORTS_F2_WALLS, NODES as SPORTS_F2_NODES, EDGES as SPORTS_F2_EDGES, START_POINTS as SPORTS_F2_START_POINTS } from '../constants/maps/sports_floor2';
+import { ROOMS as SPORTS_F3_ROOMS, VIEW_BOX as SPORTS_F3_VIEWBOX, WALLS_PATH as SPORTS_F3_WALLS, NODES as SPORTS_F3_NODES, EDGES as SPORTS_F3_EDGES, START_POINTS as SPORTS_F3_START_POINTS } from '../constants/maps/sports_floor3';
 
 export interface RoomData {
   id: string;
@@ -68,7 +71,12 @@ const ALL_ROOMS = [
   ...COMBINED_F2_ROOMS, 
   ...COMBINED_F3_ROOMS,
   ...WORKSHOP_F1_ROOMS,
-  ...WORKSHOP_F2_ROOMS
+  ...WORKSHOP_F2_ROOMS,
+  ...SPORTS_F1_ROOMS,
+  ...SPORTS_F2_ROOMS,
+  ...SPORTS_F3_ROOMS,
+  // 🔥 ДОДАЄМО ОБ'ЄКТИ ТЕРИТОРІЇ, щоб пошук міг їх знайти
+  ...TERRITORY_BUILDINGS
 ] as RoomData[];
 
 let globalSavedStartId = 'start_main';
@@ -198,7 +206,13 @@ export default function MapScreen() {
       if (roomId === 'b_workshop') {
         setActiveBuilding(2); setActiveFloor(1); setTargetRoomId(null); return;
       }
-      if (roomId && roomId.startsWith('b_') || roomId === 'stadium') {
+      if (roomId === 'b_sports') {
+        setActiveBuilding(3); setActiveFloor(1); setTargetRoomId(null); return;
+      }
+      
+      // 🔥 ФІКС: Блокуємо тільки гуртожиток або інші невідомі корпуси. 
+      // Стадіон і площадку пропускаємо далі, щоб збудувався маршрут!
+      if (roomId && roomId.startsWith('b_') && roomId !== 'b_sports' && roomId !== 'b_main' && roomId !== 'b_workshop') {
         alert("Детальна мапа для цього об'єкта ще в розробці!");
         return;
       }
@@ -251,6 +265,14 @@ export default function MapScreen() {
     } else if (activeFloor === 2) {
       currentRooms = WORKSHOP_F2_ROOMS; currentViewBox = WORKSHOP_F2_VIEWBOX; currentWallsPath = WORKSHOP_F2_WALLS; currentNodes = WORKSHOP_F2_NODES; currentEdges = WORKSHOP_F2_EDGES; currentStartPoints = WORKSHOP_F2_START_POINTS || []; currentLabels = []; currentRoofs = []; currentRoads = []; 
     }
+  } else if (activeBuilding === 3) {
+    if (activeFloor === 1) {
+      currentRooms = SPORTS_F1_ROOMS; currentViewBox = SPORTS_F1_VIEWBOX; currentWallsPath = SPORTS_F1_WALLS; currentNodes = SPORTS_F1_NODES; currentEdges = SPORTS_F1_EDGES; currentStartPoints = SPORTS_F1_START_POINTS || []; currentLabels = []; currentRoofs = []; currentRoads = []; 
+    } else if (activeFloor === 2) {
+      currentRooms = SPORTS_F2_ROOMS; currentViewBox = SPORTS_F2_VIEWBOX; currentWallsPath = SPORTS_F2_WALLS; currentNodes = SPORTS_F2_NODES; currentEdges = SPORTS_F2_EDGES; currentStartPoints = SPORTS_F2_START_POINTS || []; currentLabels = []; currentRoofs = []; currentRoads = []; 
+    } else if (activeFloor === 3) {
+      currentRooms = SPORTS_F3_ROOMS; currentViewBox = SPORTS_F3_VIEWBOX; currentWallsPath = SPORTS_F3_WALLS; currentNodes = SPORTS_F3_NODES; currentEdges = SPORTS_F3_EDGES; currentStartPoints = SPORTS_F3_START_POINTS || []; currentLabels = []; currentRoofs = []; currentRoads = []; 
+    }
   }
 
   const ADMISSION_OVERRIDES: Record<string, { label: string; description: string }> = {
@@ -291,17 +313,33 @@ export default function MapScreen() {
     let actualTargetId = targetRoomId;
     
     if (activeBuilding === 0) {
-        actualTargetId = targetRoom.building === 1 ? 'entrance_b1' : 'entrance_b2';
+        // 🔥 ФІКС: Якщо ціль лежить прямо на території (стадіон, майданчик), йдемо до неї
+        if (targetRoom.building === 0) {
+            actualTargetId = targetRoom.id;
+        } else {
+            // Інакше шукаємо вхід у потрібний корпус
+            actualTargetId = targetRoom.building === 1 ? 'entrance_b1' : 
+                             targetRoom.building === 2 ? 'entrance_b2' : 
+                             'entrance_b3';
+        }
     } 
     else if (activeBuilding !== targetRoom.building) {
         if (activeFloor !== 1) {
-             actualTargetId = activeBuilding === 1 ? `stairs_main_b${activeFloor}` : `stairs_workshop_f${activeFloor}`;
+             actualTargetId = activeBuilding === 1 ? `stairs_main_b${activeFloor}` : 
+                              activeBuilding === 2 ? `stairs_workshop_f${activeFloor}` : 
+                              `stairs_sports_f${activeFloor}`;
         } else {
-             actualTargetId = activeBuilding === 1 ? 'entrance_b1' : 'entrance_b2'; 
+             actualTargetId = activeBuilding === 1 ? 'entrance_b1' : 
+                              activeBuilding === 2 ? 'entrance_b2' : 
+                              'entrance_b3'; 
         }
     }
     else if (activeBuilding === targetRoom.building && activeFloor !== targetRoom.floor) {
-        actualTargetId = targetRoom.targetStairs || (targetRoom.building === 1 ? `stairs_main_b${activeFloor}` : `stairs_workshop_f${activeFloor}`);
+        actualTargetId = targetRoom.targetStairs || (
+            targetRoom.building === 1 ? `stairs_main_b${activeFloor}` : 
+            targetRoom.building === 2 ? `stairs_workshop_f${activeFloor}` : 
+            `stairs_sports_f${activeFloor}`
+        );
     }
 
     let bestStartId = effectiveStartId;
@@ -337,16 +375,43 @@ export default function MapScreen() {
       let finalInstruction = info.instruction;
       let finalNextBuilding = info.nextBuilding;
       let finalNextFloor = info.nextFloor;
+      let finalIsMultiBuilding = info.isMultiBuilding;
+      let finalNextStartId = info.nextStartId;
+      let finalIsMultiFloor = info.isMultiFloor; // 🔥 Додали змінну для поверхів
 
-      if (activeFloor === 1 && targetRoom.floor > 1 && activeBuilding === targetRoom.building) {
+      if (activeBuilding === 0 && targetRoom.building !== 0) {
+        finalIsMultiBuilding = true;
+        finalNextBuilding = targetRoom.building;
+        finalNextFloor = 1;
+        finalInstruction = 'Увійдіть в корпус ➔';
+        
+        finalNextStartId = targetRoom.building === 1 ? 'entrance_b1' : 
+                           targetRoom.building === 2 ? 'entrance_b2' : 
+                           'entrance_b3';
+      }
+      // 🔥 НОВИЙ БЛОК: Якщо ми на вулиці, і ціль (Стадіон) теж на вулиці
+      else if (activeBuilding === 0 && targetRoom.building === 0) {
+        finalIsMultiBuilding = false;
+        finalIsMultiFloor = false; // Вимикаємо "багатоповерховість"
+      }
+      else if (activeFloor === 1 && targetRoom.floor > 1 && activeBuilding === targetRoom.building) {
         finalInstruction = `Підніміться на ${targetRoom.floor} поверх ➔`;
         finalNextBuilding = targetRoom.building;
         finalNextFloor = targetRoom.floor;
       }
 
-      setRouteInfo({ ...info, instruction: finalInstruction, nextBuilding: finalNextBuilding, nextFloor: finalNextFloor, pathNodes: guaranteedPath });
+      setRouteInfo({ 
+        ...info, 
+        instruction: finalInstruction, 
+        nextBuilding: finalNextBuilding, 
+        nextFloor: finalNextFloor, 
+        isMultiBuilding: finalIsMultiBuilding,
+        isMultiFloor: finalIsMultiFloor, // 🔥 Передаємо оновлений статус кнопці
+        nextStartId: finalNextStartId,
+        pathNodes: guaranteedPath 
+      });
     }
-  }, [targetRoomId, activeBuilding, activeFloor, effectiveStartId, currentNodes, currentEdges]); 
+  }, [targetRoomId, activeBuilding, activeFloor, effectiveStartId, currentNodes, currentEdges]);
 
   const generateRoutePathString = () => {
     if (!routeInfo || routeInfo.pathNodes.length === 0) return '';
@@ -393,7 +458,6 @@ export default function MapScreen() {
       setActiveFloor(1); setActiveBuilding(1); setActiveStartId(globalSavedStartId); 
     }
     setTargetRoomId(null); setSearchQuery(''); setRouteInfo(null); setRouteHistory([]); setInitialRouteConfig(null); setPendingRoom(null);
-    // 🔥 Очищаємо збережену групу — при наступному відкритті розкладу буде "Виберіть групу"
     try {
       await AsyncStorage.removeItem('lastSelectedGroup');
       setLastScheduleGroup(null);
@@ -404,7 +468,6 @@ export default function MapScreen() {
     router.push('/schedule?keepGroup=true');
   };
 
-  // 🔥 ВИПРАВЛЕНО: Кнопка відображається завжди, коли є ціль
   const showInstructionBar = targetRoomId !== null;
 
   return (
@@ -479,6 +542,13 @@ export default function MapScreen() {
             >
               <Text style={[styles.tabButtonText, activeBuilding === 2 && styles.tabButtonTextActive]}>Майстерні</Text>
             </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tabButton, activeBuilding === 3 && styles.tabButtonActive]} 
+              onPress={() => setActiveBuilding(3)}
+            >
+              <Text style={[styles.tabButtonText, activeBuilding === 3 && styles.tabButtonTextActive]}>Спорткомплекс</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity 
               style={[styles.tabButton, activeBuilding === 0 && styles.tabButtonActive]} 
@@ -490,7 +560,7 @@ export default function MapScreen() {
 
           {activeBuilding !== 0 && (
             <View style={styles.tabSelector}>
-              {[1, 2, activeBuilding === 1 ? 3 : null].map((floor) => {
+              {[1, 2, (activeBuilding === 1 || activeBuilding === 3) ? 3 : null].map((floor) => {
                 if (floor === null) return null;
                 return (
                   <TouchableOpacity 
@@ -585,16 +655,14 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Зменшено загальний відступ з 30 до 20
   container: { flex: 1, padding: 20, backgroundColor: Colors.background, height: '100%' },
-  // Зменшено шрифт з 22 до 20, і відступ з 16 до 12
   mapTitle: { fontSize: 20, color: Colors.textMain, marginBottom: 12, fontWeight: '500' },
   
   topBar: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'flex-start', 
-    marginBottom: 12, // Зменшено з 16
+    marginBottom: 12, 
     zIndex: 50, 
     elevation: 50, 
     width: '100%', 
@@ -604,12 +672,11 @@ const styles = StyleSheet.create({
   
   searchWrapper: { 
     width: '100%', 
-    maxWidth: 320, // Ще трохи звузив (було 350)
+    maxWidth: 320, 
     zIndex: 50, 
     elevation: 50 
   },
   
-  // Пошук: менші відступи (16/8 замість 20/12) та радіус (10 замість 12)
   searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   searchIcon: { fontSize: 16, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16, color: Colors.textMain, outlineStyle: 'none' } as any,
@@ -624,14 +691,12 @@ const styles = StyleSheet.create({
     gap: 10 
   },
   
-  // Вкладки: менші відступи і радіуси
   tabSelector: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 8, padding: 3 },
   tabButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 },
   tabButtonActive: { backgroundColor: Colors.white, boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)', elevation: 2 },
   tabButtonText: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary },
   tabButtonTextActive: { color: Colors.primary },
   
-  // Швидкий пошук: компактніші кнопки
   hotkeysPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, width: '100%', zIndex: 1 },
   hotkeysTitle: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 10 },
   hotkeysScroll: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 20 },
@@ -639,15 +704,13 @@ const styles = StyleSheet.create({
   hotkeyIcon: { fontSize: 14 },
   hotkeyText: { fontSize: 14, fontWeight: '600', color: Colors.textMain },
   
-  // Карта: зменшено радіус з 24 до 16
   mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 0, backgroundColor: Colors.white, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
   
-  // Нижні великі кнопки: значно зменшені
-  instructionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, zIndex: 10 }, // Відступи і gap менші
-  instructionButton: { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 24, boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', elevation: 8 }, // Зменшено з 16/32
+  instructionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, zIndex: 10 }, 
+  instructionButton: { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 24, boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', elevation: 8 }, 
   returnButton: { backgroundColor: '#475569' },
-  instructionText: { color: Colors.white, fontSize: 16, fontWeight: 'bold' }, // Шрифт зменшено з 20 до 16
-  stepBackButton: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.primary, paddingVertical: 10 }, // Зменшено з 14
+  instructionText: { color: Colors.white, fontSize: 16, fontWeight: 'bold' }, 
+  stepBackButton: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.primary, paddingVertical: 10 }, 
   stepBackText: { color: Colors.primary, fontSize: 16, fontWeight: 'bold' },
   scheduleButton: { backgroundColor: Colors.primary },
   hotkeyBtnAdmission: { borderColor: Colors.primary, backgroundColor: Colors.primaryGhost },
