@@ -2,7 +2,8 @@ import { Slot, useRouter, usePathname } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Colors } from '../constants/theme'; 
-import EventsWidget from '../components/EventsWidget'; 
+import EventsWidget from '../components/EventsWidget';
+import AdmissionBanner from '../components/AdmissionBanner';
 
 export default function RootLayout() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function RootLayout() {
   const isMobile = width < 500;   
   const isCollapsed = width < 900 && !isMobile; 
 
-  const dynamicSidebarWidth = isCollapsed ? 90 : Math.min(Math.max(width * 0.25, 220), 280);
+  const dynamicSidebarWidth = isCollapsed ? 90 : Math.min(Math.max(width * 0.20, 220), 260);
 
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -121,10 +122,13 @@ export default function RootLayout() {
             </View>
           </View>
 
-          {/* ВІДЖЕТ ПОДІЙ */}
+          {/* ВІДЖЕТ ПОДІЙ  + ВІДЖЕТ ПРИЙМАЛЬНОЇ КОМІСІЇ */}
           {!isCollapsed && (
+            <View style={{ flex: 1, width: '100%' }}>
             <View style={styles.widgetWrapper}>
-              <EventsWidget />
+            <EventsWidget />
+            </View>
+              <AdmissionBanner />
             </View>
           )}
 
@@ -211,10 +215,10 @@ const styles = StyleSheet.create({
   menuTextActive: { color: Colors.white, fontWeight: 'bold' },
 
   widgetWrapper: {
-    flex: 1, 
     width: '100%',
     paddingHorizontal: 15,
-    marginVertical: 10,
+    marginTop: 10,      // ← відстань зверху (від меню до анонсів)
+    marginBottom: 10,   // ← відстань знизу (від анонсів до годинника)
     justifyContent: 'center',
     overflow: 'hidden', 
   },

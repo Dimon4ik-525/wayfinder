@@ -1,13 +1,17 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react'; 
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopBar from '../components/TopBar';
 import Substitutions from '../components/Substitutions';
 import ScheduleCard, { ScheduleCardProps } from '../components/ScheduleCard';
 import GroupSelector from '../components/GroupSelector';
 import { fetchSchedule } from '../utils/scheduleApi'; 
 import { Colors } from '../constants/theme';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function ScheduleScreen() {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
@@ -17,6 +21,32 @@ export default function ScheduleScreen() {
   
   const [currentWeek, setCurrentWeek] = useState<string>('');
   const [substitutions, setSubstitutions] = useState<any[]>([]);
+
+  // 🔥 Завантажуємо збережену групу при відкритті
+const { keepGroup } = useLocalSearchParams();
+
+useEffect(() => {
+  const loadSavedGroup = async () => {
+    try {
+      if (keepGroup === 'true') {
+        const saved = await AsyncStorage.getItem('lastSelectedGroup');
+        if (saved) setSelectedGroup(JSON.parse(saved));
+      } else {
+        await AsyncStorage.removeItem('lastSelectedGroup');
+        setSelectedGroup(null);
+      }
+    } catch (e) {}
+  };
+  loadSavedGroup();
+}, []);
+
+  // 🔥 Зберігаємо групу при зміні
+  const handleSelectGroup = async (group: any) => {
+    setSelectedGroup(group);
+    try {
+      if (group) await AsyncStorage.setItem('lastSelectedGroup', JSON.stringify(group));
+    } catch (e) {}
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
@@ -164,7 +194,7 @@ export default function ScheduleScreen() {
       />
       
       <View style={styles.selectorContainer}>
-        <GroupSelector onSelectGroup={setSelectedGroup} />
+        <GroupSelector onSelectGroup={handleSelectGroup} />
       </View>
       
       {substitutions.length > 0 && (

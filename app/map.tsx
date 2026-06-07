@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -73,20 +73,25 @@ const ALL_ROOMS = [
 
 let globalSavedStartId = 'start_main';
 
-const QUICK_LINKS = [
+const QUICK_LINKS: { label: string; roomId: string; icon?: string }[] = [
   { label: 'Директор', roomId: 'director' },
   { label: 'З.д з навч', roomId: 'deputy_1' },
   { label: 'З.д з н-вих/мет', roomId: 'deputy_2' },
   { label: 'З.д з а-гос', roomId: 'deputy_3' },
   { label: 'З.д з н-вир', roomId: 'deputy_4' },
   { label: 'Приймальна', roomId: 'reception' },
-  { icon: '☕', label: 'Буфет', roomId: 'bufet' },
-  { icon: '📚', label: 'Бібліотека', roomId: 'bibl' },
-  { icon: '🏛️', label: 'Музей', roomId: 'museum' },
+  { label: 'Буфет', roomId: 'bufet' },
+  { label: 'Бібліотека', roomId: 'bibl' },
+  { label: 'Музей', roomId: 'museum' },
+];
+const ADMISSION_QUICK_LINKS: { label: string; roomId: string; icon?: string }[] = [
+  { label: 'Приймальна ФМБ', roomId: '12' },
+  { label: 'Приймальна кваліф.', roomId: 'chit' },
 ];
 
 export default function MapScreen() {
   const params = useLocalSearchParams();
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const isNarrowSearch = width < 850; 
 
@@ -97,6 +102,7 @@ export default function MapScreen() {
   const [targetRoomId, setTargetRoomId] = useState<string | null>(null);
   const [activeStartId, setActiveStartId] = useState(globalSavedStartId);
   const [isAdmissionMode, setIsAdmissionMode] = useState(false);
+  const [lastScheduleGroup, setLastScheduleGroup] = useState<any>(null);
 
   const [routeInfo, setRouteInfo] = useState<RouteStepInfo | null>(null);
   const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
@@ -113,6 +119,8 @@ export default function MapScreen() {
         }
         const admissionSaved = await AsyncStorage.getItem('admissionMode');
         if (admissionSaved === 'true') setIsAdmissionMode(true);
+        const savedGroup = await AsyncStorage.getItem('lastSelectedGroup');
+        if (savedGroup) setLastScheduleGroup(JSON.parse(savedGroup));
       } catch (e) {
         console.warn("Не вдалося завантажити налаштування входу", e);
       }
@@ -378,13 +386,22 @@ export default function MapScreen() {
     }
   };
 
-  const handleResetRoute = () => {
+  const handleResetRoute = async () => {
     if (initialRouteConfig) {
       setActiveBuilding(initialRouteConfig.building); setActiveFloor(initialRouteConfig.floor); setActiveStartId(initialRouteConfig.startId);
     } else {
       setActiveFloor(1); setActiveBuilding(1); setActiveStartId(globalSavedStartId); 
     }
     setTargetRoomId(null); setSearchQuery(''); setRouteInfo(null); setRouteHistory([]); setInitialRouteConfig(null); setPendingRoom(null);
+    // 🔥 Очищаємо збережену групу — при наступному відкритті розкладу буде "Виберіть групу"
+    try {
+      await AsyncStorage.removeItem('lastSelectedGroup');
+      setLastScheduleGroup(null);
+    } catch (e) {}
+  };
+
+  const handleGoToSchedule = () => {
+    router.push('/schedule?keepGroup=true');
   };
 
   // 🔥 ВИПРАВЛЕНО: Кнопка відображається завжди, коли є ціль
@@ -497,6 +514,16 @@ export default function MapScreen() {
       <View style={styles.hotkeysPanel}>
         <Text style={styles.hotkeysTitle}>Швидкий пошук:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hotkeysScroll}>
+          {isAdmissionMode && ADMISSION_QUICK_LINKS.map((link, idx) => (
+            <TouchableOpacity
+              key={`admission-${idx}`}
+              style={[styles.hotkeyBtn, styles.hotkeyBtnAdmission]}
+              onPress={() => handleQuickLink(link.roomId)}
+            >
+              <Text style={styles.hotkeyIcon}>{link.icon}</Text>
+              <Text style={[styles.hotkeyText, styles.hotkeyTextAdmission]}>{link.label}</Text>
+            </TouchableOpacity>
+          ))}
           {QUICK_LINKS.map((link, idx) => (
             <TouchableOpacity 
               key={`quick-${idx}`} 
@@ -540,9 +567,16 @@ export default function MapScreen() {
               <Text style={styles.instructionText}>{routeInfo.instruction}</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.instructionButton, styles.returnButton]} onPress={handleResetRoute}>
-              <Text style={styles.instructionText}> Завершити маршрут</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={[styles.instructionButton, styles.returnButton]} onPress={handleResetRoute}>
+                <Text style={styles.instructionText}> Завершити маршрут</Text>
+              </TouchableOpacity>
+              {lastScheduleGroup && (
+                <TouchableOpacity style={[styles.instructionButton, styles.scheduleButton]} onPress={handleGoToSchedule}>
+                  <Text style={styles.instructionText}> {lastScheduleGroup.name}</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       )}
@@ -614,5 +648,8 @@ const styles = StyleSheet.create({
   returnButton: { backgroundColor: '#475569' },
   instructionText: { color: Colors.white, fontSize: 16, fontWeight: 'bold' }, // Шрифт зменшено з 20 до 16
   stepBackButton: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.primary, paddingVertical: 10 }, // Зменшено з 14
-  stepBackText: { color: Colors.primary, fontSize: 16, fontWeight: 'bold' } // Шрифт зменшено з 20 до 16
+  stepBackText: { color: Colors.primary, fontSize: 16, fontWeight: 'bold' },
+  scheduleButton: { backgroundColor: Colors.primary },
+  hotkeyBtnAdmission: { borderColor: Colors.primary, backgroundColor: Colors.primaryGhost },
+  hotkeyTextAdmission: { color: Colors.primary },
 });
