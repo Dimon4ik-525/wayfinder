@@ -75,7 +75,6 @@ const ALL_ROOMS = [
   ...SPORTS_F1_ROOMS,
   ...SPORTS_F2_ROOMS,
   ...SPORTS_F3_ROOMS,
-  // 🔥 ДОДАЄМО ОБ'ЄКТИ ТЕРИТОРІЇ, щоб пошук міг їх знайти
   ...TERRITORY_BUILDINGS
 ] as RoomData[];
 
@@ -116,6 +115,16 @@ export default function MapScreen() {
   const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
   const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
   const [pendingRoom, setPendingRoom] = useState<RoomData | null>(null);
+
+  // 🔥 Стан для видимості стрілочки
+  const [showRightArrow, setShowRightArrow] = useState(true);
+
+  // 🔥 Обробник скролу
+  const handleScroll = (event: any) => {
+    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+    const isEndReached = contentOffset.x + layoutMeasurement.width >= contentSize.width - 15;
+    setShowRightArrow(!isEndReached);
+  };
 
   useEffect(() => {
     const loadStartPoint = async () => {
@@ -210,8 +219,6 @@ export default function MapScreen() {
         setActiveBuilding(3); setActiveFloor(1); setTargetRoomId(null); return;
       }
       
-      // 🔥 ФІКС: Блокуємо тільки гуртожиток або інші невідомі корпуси. 
-      // Стадіон і площадку пропускаємо далі, щоб збудувався маршрут!
       if (roomId && roomId.startsWith('b_') && roomId !== 'b_sports' && roomId !== 'b_main' && roomId !== 'b_workshop') {
         alert("Детальна мапа для цього об'єкта ще в розробці!");
         return;
@@ -313,11 +320,9 @@ export default function MapScreen() {
     let actualTargetId = targetRoomId;
     
     if (activeBuilding === 0) {
-        // 🔥 ФІКС: Якщо ціль лежить прямо на території (стадіон, майданчик), йдемо до неї
         if (targetRoom.building === 0) {
             actualTargetId = targetRoom.id;
         } else {
-            // Інакше шукаємо вхід у потрібний корпус
             actualTargetId = targetRoom.building === 1 ? 'entrance_b1' : 
                              targetRoom.building === 2 ? 'entrance_b2' : 
                              'entrance_b3';
@@ -377,7 +382,7 @@ export default function MapScreen() {
       let finalNextFloor = info.nextFloor;
       let finalIsMultiBuilding = info.isMultiBuilding;
       let finalNextStartId = info.nextStartId;
-      let finalIsMultiFloor = info.isMultiFloor; // 🔥 Додали змінну для поверхів
+      let finalIsMultiFloor = info.isMultiFloor; 
 
       if (activeBuilding === 0 && targetRoom.building !== 0) {
         finalIsMultiBuilding = true;
@@ -389,10 +394,9 @@ export default function MapScreen() {
                            targetRoom.building === 2 ? 'entrance_b2' : 
                            'entrance_b3';
       }
-      // 🔥 НОВИЙ БЛОК: Якщо ми на вулиці, і ціль (Стадіон) теж на вулиці
       else if (activeBuilding === 0 && targetRoom.building === 0) {
         finalIsMultiBuilding = false;
-        finalIsMultiFloor = false; // Вимикаємо "багатоповерховість"
+        finalIsMultiFloor = false;
       }
       else if (activeFloor === 1 && targetRoom.floor > 1 && activeBuilding === targetRoom.building) {
         finalInstruction = `Підніміться на ${targetRoom.floor} поверх ➔`;
@@ -406,7 +410,7 @@ export default function MapScreen() {
         nextBuilding: finalNextBuilding, 
         nextFloor: finalNextFloor, 
         isMultiBuilding: finalIsMultiBuilding,
-        isMultiFloor: finalIsMultiFloor, // 🔥 Передаємо оновлений статус кнопці
+        isMultiFloor: finalIsMultiFloor,
         nextStartId: finalNextStartId,
         pathNodes: guaranteedPath 
       });
@@ -583,28 +587,45 @@ export default function MapScreen() {
 
       <View style={styles.hotkeysPanel}>
         <Text style={styles.hotkeysTitle}>Швидкий пошук:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hotkeysScroll}>
-          {isAdmissionMode && ADMISSION_QUICK_LINKS.map((link, idx) => (
-            <TouchableOpacity
-              key={`admission-${idx}`}
-              style={[styles.hotkeyBtn, styles.hotkeyBtnAdmission]}
-              onPress={() => handleQuickLink(link.roomId)}
-            >
-              <Text style={styles.hotkeyIcon}>{link.icon}</Text>
-              <Text style={[styles.hotkeyText, styles.hotkeyTextAdmission]}>{link.label}</Text>
-            </TouchableOpacity>
-          ))}
-          {QUICK_LINKS.map((link, idx) => (
-            <TouchableOpacity 
-              key={`quick-${idx}`} 
-              style={styles.hotkeyBtn} 
-              onPress={() => handleQuickLink(link.roomId)} 
-            >
-              {link.icon && <Text style={styles.hotkeyIcon}>{link.icon}</Text>}
-              <Text style={styles.hotkeyText}>{link.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        
+        {/* 🔥 Новий обгортаючий контейнер для скролу та стрілочки */}
+        <View style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.hotkeysScroll}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
+            {isAdmissionMode && ADMISSION_QUICK_LINKS.map((link, idx) => (
+              <TouchableOpacity
+                key={`admission-${idx}`}
+                style={[styles.hotkeyBtn, styles.hotkeyBtnAdmission]}
+                onPress={() => handleQuickLink(link.roomId)}
+              >
+                <Text style={styles.hotkeyIcon}>{link.icon}</Text>
+                <Text style={[styles.hotkeyText, styles.hotkeyTextAdmission]}>{link.label}</Text>
+              </TouchableOpacity>
+            ))}
+            {QUICK_LINKS.map((link, idx) => (
+              <TouchableOpacity 
+                key={`quick-${idx}`} 
+                style={styles.hotkeyBtn} 
+                onPress={() => handleQuickLink(link.roomId)} 
+              >
+                {link.icon && <Text style={styles.hotkeyIcon}>{link.icon}</Text>}
+                <Text style={styles.hotkeyText}>{link.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* 🔥 Стрілочка */}
+          {showRightArrow && (
+            <View style={styles.scrollArrowContainer} pointerEvents="none">
+              <Text style={styles.scrollArrowText}>›</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={styles.mapArea}>
@@ -621,6 +642,7 @@ export default function MapScreen() {
           staticLabels={currentLabels} 
           roofZones={currentRoofs} 
           roadZones={currentRoads}
+          isTerritory={activeBuilding === 0}
         />
       </View>
 
@@ -698,12 +720,35 @@ const styles = StyleSheet.create({
   tabButtonTextActive: { color: Colors.primary },
   
   hotkeysPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, width: '100%', zIndex: 1 },
-  hotkeysTitle: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 10 },
+  hotkeysTitle: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 10, flexShrink: 0 },
   hotkeysScroll: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 20 },
   hotkeyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
   hotkeyIcon: { fontSize: 14 },
   hotkeyText: { fontSize: 14, fontWeight: '600', color: Colors.textMain },
   
+  // 🔥 Стилі для нової стрілочки
+  scrollArrowContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    justifyContent: 'center',
+    paddingLeft: 12,
+    paddingRight: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: -4, height: 0 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2, 
+  },
+  scrollArrowText: {
+    fontSize: 26,
+    color: Colors.primary,
+    fontWeight: 'bold',
+    marginTop: -4,
+  },
+
   mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 0, backgroundColor: Colors.white, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
   
   instructionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, zIndex: 10 }, 

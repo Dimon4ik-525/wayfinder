@@ -17,6 +17,7 @@ export interface MapCanvasProps {
   roofZones?: any[]; // 🔥 Дозволяємо передавати будь-які об'єкти даху або пустий масив
   roadZones?: string[];
   onStartPointSelect?: (startId: string) => void;
+  isTerritory?: boolean; // 🔥 Додали сюди, щоб TypeScript знав про цей параметр
 }
 
 export default function MapCanvas({ 
@@ -32,6 +33,7 @@ export default function MapCanvas({
   roofZones = [],
   roadZones = [],
   onStartPointSelect,
+  isTerritory = false, // 🔥 Додали сюди, щоб компонент міг його приймати (за замовчуванням false)
 }: MapCanvasProps) {
 
   const zoomRef = useRef<any>(null);
@@ -225,6 +227,13 @@ export default function MapCanvas({
             if (!sp.label && sp.id === 'start_main') inactiveText = 'ВХІД №1';
             if (!sp.label && sp.id === 'start_entrance') inactiveText = 'ВХІД №2';
 
+            // 🔥 Динамічні розміри залежно від того, чи ми на території (isTerritory)
+            const hitboxRadius = isTerritory ? "300" : "120";
+            const haloRadius = isTerritory ? "200" : "80";
+            const coreRadius = isTerritory ? "80" : "30";
+            const textY = isTerritory ? "280" : "100";
+            const textSize = isTerritory ? 120 : 42;
+
             return (
               <G
                 key={`start-${sp.id}`}
@@ -232,10 +241,17 @@ export default function MapCanvas({
                 y={sp.y}
                 onPress={() => !isActive && onStartPointSelect?.(sp.id)}
               >
-                <Circle cx="0" cy="0" r="120" fill={fillColor} opacity={0} />
-                <Circle cx="0" cy="0" r="80" fill={fillColor} opacity={isActive ? 0.2 : 0.1} />
-                <Circle cx="0" cy="0" r="30" fill={fillColor} />
-                <SvgText x="0" y="100" fill={fillColor} fontSize={42} fontWeight="bold" textAnchor="middle">
+                {/* Невидима зона для легшого кліку */}
+                <Circle cx="0" cy="0" r={hitboxRadius} fill={fillColor} opacity={0} />
+                
+                {/* Напівпрозорий ореол */}
+                <Circle cx="0" cy="0" r={haloRadius} fill={fillColor} opacity={isActive ? 0.2 : 0.1} />
+                
+                {/* Сама центральна точка */}
+                <Circle cx="0" cy="0" r={coreRadius} fill={fillColor} />
+                
+                {/* Текст під точкою */}
+                <SvgText x="0" y={textY} fill={fillColor} fontSize={textSize} fontWeight="bold" textAnchor="middle">
                   {isActive ? 'ВИ ТУТ' : inactiveText}
                 </SvgText>
               </G>

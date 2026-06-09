@@ -42,9 +42,9 @@ export const TERRITORY_NODES = [
   { id: 'stadium', x: 4170, y: 6500 },    
   { id: 'court', x: 2700, y: 4670 },
 
-  { id: 'dorm', x: 1400, y: 6600 },
+  { id: 'dorm', x: 1400, y: 6650 },
   { id: 't_node_9', x: 1700, y: 3700 },
-  { id: 't_node_10', x: 1700, y: 6600 },
+  { id: 't_node_10', x: 1700, y: 6650 },
 
 ];
 
@@ -80,4 +80,5 @@ export const TERRITORY_START_POINTS: any[] = [
   { id: 'entrance_b1', label: 'Вихід з корп. 1', x: 5520, y: 3350 },
   { id: 'entrance_b2', label: 'Вхід до майстерні', x: 6060, y: 5500 },
   { id: 'entrance_b3', label: 'Вхід до спорткомлексу', x: 2350, y: 8900 },
+  { id: 'dorm', label: 'Вхід до гуртожитку', x: 1480, y: 6650 },
 ];
