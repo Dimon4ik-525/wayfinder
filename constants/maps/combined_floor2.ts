@@ -40,9 +40,10 @@ export const ROOMS = [
   
     // Центральна частина
     { id: '23', label: 'Кабінет 23', building: 1, floor: 2, x: 3925, y: 2490, width: 885, height: 495, targetStairs: 'stairs_main_b2' },
+    { id: 'accounting', label: 'Бухгалтерія', building: 1, floor: 2, x: 3925, y: 2010, width: 1140, height: 250, targetStairs: 'stairs_main_b2' },
   
     // Праве крило
-    { id: '25', label: 'Кабінет 25', building: 1, floor: 2, x: 5080, y: 2005, width: 910, height: 470, targetStairs: 'stairs_main_b2' },
+    { id: '25', label: 'Кабінет 25', building: 1, floor: 2, x: 5080, y: 2010, width: 910, height: 465, targetStairs: 'stairs_main_b2' },
     { id: '24', label: 'Кабінет 24', building: 1, floor: 2, x: 5080, y: 2510, width: 910, height: 475, targetStairs: 'stairs_main_b2' },
 ];
 
@@ -95,8 +96,9 @@ export const NODES = [
   { id: 'c_drop_22', x: 3540, y: 2550 }, // Навпроти 22-го
   { id: 'c_drop_23', x: 3540, y: 2590 }, // Навпроти 23-го
   { id: 'c_mid_23', x: 3640, y: 2600 }, // Навпроти 23-го по горизонталі
-    { id: 'c_cross_right', x: 4940, y: 2370 }, // Перехрестя в правому крилі
+  { id: 'c_cross_right', x: 4940, y: 2370 }, // Перехрестя в правому крилі
   { id: 'c_down_24', x: 4940, y: 2550 }, // Навпроти 24-го
+  { id: 'c_accounting', x: 4540, y: 2370 }, // Навпроти бухгалтерії
 
   // Кінцеві точки В СЕРЕДИНІ кабінетів
   { id: '21', x: 3400, y: 2315 },
@@ -104,6 +106,7 @@ export const NODES = [
   { id: '23', x: 4000, y: 2590 },
   { id: '24', x: 5100, y: 2550 },
   { id: '25', x: 5100, y: 2370 },
+  { id: 'accounting', x: 4540, y: 2200 },
 ];
 
 export const EDGES = [
@@ -129,13 +132,15 @@ export const EDGES = [
   { from: 'c_drop_21', to: 'c_cross_main' },
   { from: 'c_cross_main', to: 'c_drop_22' },
   { from: 'c_drop_22', to: 'c_drop_23' },
-  // праве крило / 24, 25
+  // праве крило / 24, 25, бухгалтерія
+  { from: 'c_cross_main', to: 'c_accounting' },
   { from: 'c_cross_main', to: 'c_cross_right' },
   { from: 'c_cross_right', to: 'c_down_24' },
   // Заходи в кабінети 
   { from: 'c_drop_21', to: '21' },
   { from: 'c_drop_22', to: '22' },
   { from: 'c_drop_23', to: '23' },
+  { from: 'c_accounting', to: 'accounting' },
   { from: 'c_cross_right', to: '25' },
   { from: 'c_down_24', to: '24' },
 ];

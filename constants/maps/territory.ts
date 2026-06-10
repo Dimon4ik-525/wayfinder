@@ -1,5 +1,5 @@
 export const TERRITORY_LABELS = [
-  { id: 'street_vyshyvanka', text: 'вул. Вишиванки', x: 4050, y: 170, fontSize: 150, color: '#9CA3AF' }
+  { id: 'street_vyshyvanka', text: 'вул. Вишиванка', x: 4050, y: 170, fontSize: 150, color: '#9CA3AF' }
 ];
 
 export const TERRITORY_VIEWBOX = "0 0 7264 10409";
@@ -15,7 +15,7 @@ export const TERRITORY_BUILDINGS = [
     textX: 6000,  
     textY: 2850
    },
-  { id: 'b_workshop', label: 'Майстерня', building: 0, floor: 0, fontSize: 200, points: "6040,3660 7150,3660 7150,6890 6610,6890 6610,5935 6040,5935 6040,5905 6060,5905 6060,3685 6040,3685",
+  { id: 'b_workshop', label: 'Виробничі\nмайстерні', building: 0, floor: 0, fontSize: 200, points: "6040,3660 7150,3660 7150,6890 6610,6890 6610,5935 6040,5935 6040,5905 6060,5905 6060,3685 6040,3685",
     textX: 6600,
     textY: 5000
    },

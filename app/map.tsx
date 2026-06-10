@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/theme';
 
@@ -90,10 +90,11 @@ const QUICK_LINKS: { label: string; roomId: string; icon?: string }[] = [
   { label: 'Буфет', roomId: 'bufet' },
   { label: 'Бібліотека', roomId: 'bibl' },
   { label: 'Музей', roomId: 'museum' },
+  { label: 'Бухгалтерія', roomId: 'accounting' },
 ];
 const ADMISSION_QUICK_LINKS: { label: string; roomId: string; icon?: string }[] = [
-  { label: 'Приймальна ФМБ', roomId: '12' },
-  { label: 'Приймальна кваліф.', roomId: 'chit' },
+  { label: 'Приймальна комісія Б/ФМБ', roomId: '12' },
+  { label: 'Приймальна комісія кваліф. роб', roomId: 'chit' },
 ];
 
 export default function MapScreen() {
@@ -116,14 +117,41 @@ export default function MapScreen() {
   const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
   const [pendingRoom, setPendingRoom] = useState<RoomData | null>(null);
 
-  // 🔥 Стан для видимості стрілочки
-  const [showRightArrow, setShowRightArrow] = useState(true);
+  // 🔥 Стан та Refs для клікабельних стрілочок
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollX = useRef(0);
+  const layoutWidth = useRef(0); // Ширина самого вікна скролу
+  const contentWidth = useRef(0); // Загальна ширина всіх кнопок
+  
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  // За замовчуванням ставимо false, щоб стрілка не блимала на широких екранах
+  const [showRightArrow, setShowRightArrow] = useState(false); 
 
-  // 🔥 Обробник скролу
-  const handleScroll = (event: any) => {
-    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
-    const isEndReached = contentOffset.x + layoutMeasurement.width >= contentSize.width - 15;
+  // Розумна функція перевірки видимості стрілок
+  const checkArrowsVisibility = (offsetX: number) => {
+    if (contentWidth.current <= layoutWidth.current) {
+      setShowLeftArrow(false);
+      setShowRightArrow(false);
+      return;
+    }
+
+    const isStartReached = offsetX <= 5;
+    const isEndReached = offsetX + layoutWidth.current >= contentWidth.current - 15;
+
+    setShowLeftArrow(!isStartReached);
     setShowRightArrow(!isEndReached);
+  };
+
+  const handleScroll = (event: any) => {
+    scrollX.current = event.nativeEvent.contentOffset.x;
+    checkArrowsVisibility(scrollX.current);
+  };
+
+  const handleScrollLeft = () => {
+    scrollViewRef.current?.scrollTo({ x: Math.max(0, scrollX.current - 250), animated: true });
+  };
+  const handleScrollRight = () => {
+    scrollViewRef.current?.scrollTo({ x: scrollX.current + 250, animated: true });
   };
 
   useEffect(() => {
@@ -283,8 +311,8 @@ export default function MapScreen() {
   }
 
   const ADMISSION_OVERRIDES: Record<string, { label: string; description: string }> = {
-    '12':   { label: 'Приймальна\nдля\nФМБ',            description: 'Приймальна для фахових молодших бакалаврів' },
-    'chit': { label: 'Приймальна\nдля\nкваліфікованих', description: 'Приймальна для кваліфікованих' },
+    '12':   { label: 'Приймальна\nкомісія\nдля Б/ФМБ',            description: 'Приймальна комісія для бакалаврів / фахових молодших бакалаврів' },
+    'chit': { label: 'Приймальна\nкомісія\nдля\nкваліф. роб', description: 'Приймальна комісія для кваліфікованих робітників' },
   };
   const displayRooms = isAdmissionMode
     ? currentRooms.map(r =>
@@ -537,7 +565,7 @@ export default function MapScreen() {
               style={[styles.tabButton, activeBuilding === 1 && styles.tabButtonActive]} 
               onPress={() => setActiveBuilding(1)}
             >
-              <Text style={[styles.tabButtonText, activeBuilding === 1 && styles.tabButtonTextActive]}>Головний корпус</Text>
+              <Text style={[styles.tabButtonText, activeBuilding === 1 && styles.tabButtonTextActive]}>Корпуси 1/2</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -588,14 +616,25 @@ export default function MapScreen() {
       <View style={styles.hotkeysPanel}>
         <Text style={styles.hotkeysTitle}>Швидкий пошук:</Text>
         
-        {/* 🔥 Новий обгортаючий контейнер для скролу та стрілочки */}
+        {/* 🔥 Обгортаючий контейнер */}
         <View style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
+          
+          {/* 🔥 ЛІВА СТРІЛКА */}
+          {showLeftArrow && (
+            <TouchableOpacity style={styles.scrollArrowContainerLeft} onPress={handleScrollLeft}>
+              <Text style={styles.scrollArrowText}>‹</Text>
+            </TouchableOpacity>
+          )}
+
           <ScrollView 
+            ref={scrollViewRef}
             horizontal 
             showsHorizontalScrollIndicator={false} 
             contentContainerStyle={styles.hotkeysScroll}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            onLayout={(e) => { layoutWidth.current = e.nativeEvent.layout.width; checkArrowsVisibility(scrollX.current); }}
+            onContentSizeChange={(w) => { contentWidth.current = w; checkArrowsVisibility(scrollX.current); }}
           >
             {isAdmissionMode && ADMISSION_QUICK_LINKS.map((link, idx) => (
               <TouchableOpacity
@@ -619,11 +658,11 @@ export default function MapScreen() {
             ))}
           </ScrollView>
 
-          {/* 🔥 Стрілочка */}
+          {/* 🔥 ПРАВА СТРІЛКА */}
           {showRightArrow && (
-            <View style={styles.scrollArrowContainer} pointerEvents="none">
+            <TouchableOpacity style={styles.scrollArrowContainerRight} onPress={handleScrollRight}>
               <Text style={styles.scrollArrowText}>›</Text>
-            </View>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -721,26 +760,40 @@ const styles = StyleSheet.create({
   
   hotkeysPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, width: '100%', zIndex: 1 },
   hotkeysTitle: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 10, flexShrink: 0 },
-  hotkeysScroll: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 20 },
+  hotkeysScroll: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 25 }, 
   hotkeyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
   hotkeyIcon: { fontSize: 14 },
   hotkeyText: { fontSize: 14, fontWeight: '600', color: Colors.textMain },
   
-  // 🔥 Стилі для нової стрілочки
-  scrollArrowContainer: {
+  scrollArrowContainerRight: {
     position: 'absolute',
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
-    paddingLeft: 12,
-    paddingRight: 4,
+    paddingHorizontal: 12,
     shadowColor: '#000',
     shadowOffset: { width: -4, height: 0 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2, 
+    elevation: 2,
+    zIndex: 10,
+  },
+  scrollArrowContainerLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    zIndex: 10,
   },
   scrollArrowText: {
     fontSize: 26,

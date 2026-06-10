@@ -41,16 +41,17 @@ export default function AdmissionBanner() {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingHorizontal: 15,
+    paddingHorizontal: 20, // 🔥 Змінено з 15 на 20, щоб вирівняти з верхнім меню
     marginBottom: 10,
   },
   button: {
+    width: '100%',         // 🔥 Жорстко розтягуємо на всю доступну ширину
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primary,
     borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     gap: 8,
   },
   icon: {
@@ -59,9 +60,9 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     color: Colors.white,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
+    fontSize: 16,
+    fontWeight: 'bold',
+    lineHeight: 18, // потенційно можна не використовувати, тест
   },
   arrow: {
     color: Colors.white,

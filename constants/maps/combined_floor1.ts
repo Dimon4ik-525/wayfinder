@@ -1,5 +1,5 @@
 export const STATIC_LABELS = [
-  { id: 'street_vyshyvanka', text: 'вул. Вишиванки', x: 2000, y: 130, fontSize: 90, color: '#9CA3AF' }
+  { id: 'street_vyshyvanka', text: 'вул. Вишиванка', x: 2000, y: 130, fontSize: 90, color: '#9CA3AF' }
 ];
 
 export const ROAD_ZONES = [
