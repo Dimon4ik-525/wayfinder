@@ -496,8 +496,9 @@ export default function MapScreen() {
     } catch (e) {}
   };
 
-  const handleGoToSchedule = () => {
-    router.push('/schedule?keepGroup=true');
+  const handleGoToSchedule = async () => {
+  await AsyncStorage.setItem('returnToSchedule', 'true');
+  router.push('/schedule');
   };
 
   const showInstructionBar = targetRoomId !== null;

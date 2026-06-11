@@ -9,7 +9,8 @@ interface Group {
 
 interface GroupSelectorProps {
   onSelectGroup: (group: Group) => void;
-  currentWeek?: string; // Приймаємо тиждень з головного екрана
+  currentWeek?: string; 
+  value?: Group | null;
 }
 
 const QUALIFIED_GROUPS: Record<string, string[]> = {
@@ -33,7 +34,7 @@ const SECTION_ORDER = [
   'Інші групи'
 ];
 
-export default function GroupSelector({ onSelectGroup, currentWeek }: GroupSelectorProps) {
+export default function GroupSelector({ onSelectGroup, currentWeek, value }: GroupSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [sections, setSections] = useState<{title: string, data: Group[]}[]>([]);
@@ -99,19 +100,22 @@ export default function GroupSelector({ onSelectGroup, currentWeek }: GroupSelec
     return finalSections;
   };
 
-  useEffect(() => {
-    const loadGroups = async () => {
-      setLoading(true);
-      const data = await fetchGroups(); 
-      
-      if (data && Array.isArray(data)) {
-        const structuredData = categorizeGroups(data);
-        setSections(structuredData);
-      }
-      setLoading(false);
-    };
-    loadGroups();
-  }, []);
+useEffect(() => {
+  const loadGroups = async () => {
+    setLoading(true);
+    const data = await fetchGroups(); 
+    if (data && Array.isArray(data)) {
+      const structuredData = categorizeGroups(data);
+      setSections(structuredData);
+    }
+    setLoading(false);
+  };
+  loadGroups();
+}, []);
+
+useEffect(() => {
+  if (value) setSelectedGroup(value);
+}, [value]);
 
   const handleSelect = (group: Group) => {
     setSelectedGroup(group);

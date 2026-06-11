@@ -8,7 +8,6 @@ import ScheduleCard, { ScheduleCardProps } from '../components/ScheduleCard';
 import GroupSelector from '../components/GroupSelector';
 import { fetchSchedule } from '../utils/scheduleApi'; 
 import { Colors } from '../constants/theme';
-import { useLocalSearchParams } from 'expo-router';
 import TimeIndicator, { LessonLayout } from '../components/TimeIndicator';
 
 export default function ScheduleScreen() {
@@ -24,23 +23,26 @@ export default function ScheduleScreen() {
   const [substitutions, setSubstitutions] = useState<any[]>([]);
   const [lessonLayouts, setLessonLayouts] = useState<LessonLayout[]>([]);
 
-  // 🔥 Завантажуємо збережену групу при відкритті
-  const { keepGroup } = useLocalSearchParams();
-
   useEffect(() => {
-    const loadSavedGroup = async () => {
-      try {
-        if (keepGroup === 'true') {
-          const saved = await AsyncStorage.getItem('lastSelectedGroup');
-          if (saved) setSelectedGroup(JSON.parse(saved));
-        } else {
-          await AsyncStorage.removeItem('lastSelectedGroup');
-          setSelectedGroup(null);
-        }
-      } catch (e) {}
-    };
-    loadSavedGroup();
-  }, []);
+  const loadSavedGroup = async () => {
+    try {
+      const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
+      // 🔥 Одразу видаляємо прапорець
+      await AsyncStorage.removeItem('returnToSchedule');
+
+      if (shouldKeep === 'true') {
+        // Повернення з мапи — відновлюємо групу
+        const saved = await AsyncStorage.getItem('lastSelectedGroup');
+        if (saved) setSelectedGroup(JSON.parse(saved));
+      } else {
+        // Звичайний вхід — скидаємо групу
+        await AsyncStorage.removeItem('lastSelectedGroup');
+        setSelectedGroup(null);
+      }
+    } catch (e) {}
+  };
+  loadSavedGroup();
+}, []);
 
   // 🔥 Зберігаємо групу при зміні
   const handleSelectGroup = async (group: any) => {
@@ -187,6 +189,7 @@ export default function ScheduleScreen() {
           <GroupSelector 
             onSelectGroup={handleSelectGroup}
             currentWeek={currentWeek}
+            value={selectedGroup}
            />
         </View>
         
