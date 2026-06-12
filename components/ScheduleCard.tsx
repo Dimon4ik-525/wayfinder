@@ -46,7 +46,10 @@ export default function ScheduleCard({ lessonNumber, timeStart, timeEnd, status,
 
     router.push({
       pathname: '/map', 
-      params: { room: room } 
+      params: { 
+        room: room,
+        fromSchedule: 'true'
+       } 
     });
   };
 

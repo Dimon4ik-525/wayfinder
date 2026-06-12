@@ -1,13 +1,17 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react'; 
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopBar from '../components/TopBar';
 import Substitutions from '../components/Substitutions';
 import ScheduleCard, { ScheduleCardProps } from '../components/ScheduleCard';
 import GroupSelector from '../components/GroupSelector';
 import { fetchSchedule } from '../utils/scheduleApi'; 
 import { Colors } from '../constants/theme';
+import TimeIndicator, { LessonLayout } from '../components/TimeIndicator';
 
 export default function ScheduleScreen() {
+  const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
@@ -17,9 +21,39 @@ export default function ScheduleScreen() {
   
   const [currentWeek, setCurrentWeek] = useState<string>('');
   const [substitutions, setSubstitutions] = useState<any[]>([]);
+  const [lessonLayouts, setLessonLayouts] = useState<LessonLayout[]>([]);
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000);
+  const loadSavedGroup = async () => {
+    try {
+      const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
+      // 🔥 Одразу видаляємо прапорець
+      await AsyncStorage.removeItem('returnToSchedule');
+
+      if (shouldKeep === 'true') {
+        // Повернення з мапи — відновлюємо групу
+        const saved = await AsyncStorage.getItem('lastSelectedGroup');
+        if (saved) setSelectedGroup(JSON.parse(saved));
+      } else {
+        // Звичайний вхід — скидаємо групу
+        await AsyncStorage.removeItem('lastSelectedGroup');
+        setSelectedGroup(null);
+      }
+    } catch (e) {}
+  };
+  loadSavedGroup();
+}, []);
+
+  // 🔥 Зберігаємо групу при зміні
+  const handleSelectGroup = async (group: any) => {
+    setSelectedGroup(group);
+    try {
+      if (group) await AsyncStorage.setItem('lastSelectedGroup', JSON.stringify(group));
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 10000);
     return () => clearInterval(timer);
   }, []);
 
@@ -137,6 +171,7 @@ export default function ScheduleScreen() {
         setScheduleData([]);
         setSubstitutions([]);
       }
+      setLessonLayouts([]);
       setIsLoading(false);
     };
 
@@ -144,27 +179,26 @@ export default function ScheduleScreen() {
   }, [selectedGroup, selectedDate]); 
 
   const isToday = selectedDate.toDateString() === new Date().toDateString();
-  const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-  const calculateLineTop = () => {
-    const startHour = 9; 
-    const PIXELS_PER_HOUR = 78; 
-    const totalMinutesPassed = ((now.getHours() - startHour) * 60) + now.getMinutes();
-    const position = (totalMinutesPassed / 60) * PIXELS_PER_HOUR;
-    return Math.max(0, position);
-  };
 
   return (
     <View style={styles.container}>
-      <TopBar 
-        selectedDate={selectedDate} 
-        onDateChange={setSelectedDate} 
-        groupName={selectedGroup?.name}
-        currentWeek={currentWeek}
-      />
       
-      <View style={styles.selectorContainer}>
-        <GroupSelector onSelectGroup={setSelectedGroup} />
+      {/* 🔥 ОБ'ЄДНАНИЙ РЯДОК ДЛЯ ШАПКИ (ВИБІР ГРУПИ + ДАТА) */}
+      <View style={styles.headerRow}>
+        <View style={styles.selectorContainer}>
+          <GroupSelector 
+            onSelectGroup={handleSelectGroup}
+            currentWeek={currentWeek}
+            value={selectedGroup}
+           />
+        </View>
+        
+        <View style={styles.topBarContainer}>
+          <TopBar 
+            selectedDate={selectedDate} 
+            onDateChange={setSelectedDate} 
+          />
+        </View>
       </View>
       
       {substitutions.length > 0 && (
@@ -179,7 +213,7 @@ export default function ScheduleScreen() {
             </View>
         ) : !selectedGroup ? (
             <View style={styles.centerContainer}>
-                <Text style={{color: '#64748B'}}>👈 Оберіть групу в меню вище, щоб побачити розклад</Text>
+                <Text style={{color: '#64748B', fontSize: 20, fontWeight: '500'}}>☝️ Щоб побачити розклад - оберіть групу в меню вище</Text>
             </View>
         ) : scheduleData.length === 0 && substitutions.length === 0 ? (
              <View style={styles.centerContainer}>
@@ -189,16 +223,28 @@ export default function ScheduleScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, width: '100%' }}>
             
             {isToday && (
-                <View style={[styles.redLineContainer, { top: calculateLineTop() }]}>
-                <View style={styles.redBadge}>
-                    <Text style={styles.redBadgeText}>{formattedTime}</Text>
-                </View>
-                <View style={styles.redLine} />
-                </View>
+              <TimeIndicator layouts={lessonLayouts} now={now} />
             )}
 
             {scheduleData.map((lesson, index) => (
-                <ScheduleCard key={index} {...lesson} />
+              <View
+                key={index}
+                onLayout={(e) => {
+                  const { y, height } = e.nativeEvent.layout;
+                  setLessonLayouts(prev => {
+                    const filtered = prev.filter(l => l.lessonId !== lesson.lessonId);
+                    return [...filtered, {
+                      lessonId: lesson.lessonId || index,
+                      y,
+                      height,
+                      timeStart: lesson.timeStart,
+                      timeEnd: lesson.timeEnd,
+                    }];
+                  });
+                }}
+              >
+                <ScheduleCard {...lesson} />
+              </View>
             ))}
             </ScrollView>
         )}
@@ -209,11 +255,24 @@ export default function ScheduleScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: Colors.background },
-  selectorContainer: { zIndex: 100, marginBottom: 15 },
-  listContainer: { flex: 1, marginTop: 10, position: 'relative', alignItems: 'stretch' },
+  
+  // 🔥 НОВІ СТИЛІ ДЛЯ ШАПКИ В ОДИН РЯДОК
+  headerRow: {
+    flexDirection: 'row',       // Елементи стоятимуть зліва направо
+    alignItems: 'center',       // Вирівнювання по вертикалі по центру
+    justifyContent: 'space-between', // Розштовхуємо їх по краях
+    marginBottom: 15,
+    zIndex: 100,                // Дуже важливо, щоб дропдаун перекривав картки нижче
+  },
+  selectorContainer: { 
+    //flex: 1,                    // Займає весь вільний простір зліва
+    marginRight: 15,            // Відступ від блоку з датою
+    zIndex: 100,
+  },
+  topBarContainer: {
+    flexShrink: 0,              // Блок дати не буде стискатися
+  },
+
+  listContainer: { flex: 1, position: 'relative', alignItems: 'stretch' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  redLineContainer: { position: 'absolute', left: -10, right: 0, flexDirection: 'row', alignItems: 'center', zIndex: 10 },
-  redBadge: { backgroundColor: Colors.error, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 100, elevation: 3 },
-  redBadgeText: { color: Colors.white, fontSize: 12, fontWeight: 'bold' },
-  redLine: { flex: 1, height: 2, backgroundColor: Colors.error },
 });

@@ -3,7 +3,6 @@
 export type MapNode = { id: string; x: number; y: number };
 export type MapEdge = { from: string; to: string };
 
-// --- ТВІЙ КЛАСИЧНИЙ АЛГОРИТМ (працює ідеально для одного графа) ---
 export function findShortestPath(startId: string, endId: string, nodes: MapNode[], edges: MapEdge[]): MapNode[] {
   const graph: Record<string, { node: string; weight: number }[]> = {};
   nodes.forEach(n => graph[n.id] = []);
@@ -71,17 +70,49 @@ export function findShortestPath(startId: string, endId: string, nodes: MapNode[
   return path.length > 1 ? path : []; 
 }
 
-
-// --- НОВА ЛОГІКА: ГЛОБАЛЬНИЙ МАРШРУТИЗАТОР (Корпуси + Поверхи) ---
-
 export interface RouteStepInfo {
   pathNodes: MapNode[];     
   isMultiFloor: boolean;    
-  isMultiBuilding: boolean; // ДОДАНО: Чи потрібен перехід в інший корпус?
+  isMultiBuilding: boolean; 
   instruction: string;      
   nextFloor: number | null; 
-  nextBuilding: number | null; // ДОДАНО: В який корпус ідемо
+  nextBuilding: number | null; 
   nextStartId: string;      
+}
+
+// 🔥 Знаходить найближчі сходи від поточної позиції
+// Якщо startId вже є сходами — одразу повертає їх (без пошуку)
+function findNearestStairs(
+  startId: string,
+  building: number,
+  nodes: MapNode[],
+  edges: MapEdge[]
+): { stairsId: string; pathToStairs: MapNode[] } {
+  if (building === 1) {
+    const options = ['stairs_main_b1', 'stairs_main_b2'];
+    
+    // 🔥 Якщо вже стоїмо на одних зі сходів — повертаємо їх одразу
+    if (options.includes(startId)) {
+      return { stairsId: startId, pathToStairs: [] };
+    }
+
+    let bestStairs = options[0];
+    let bestLen = Infinity;
+    let bestPath: MapNode[] = [];
+
+    for (const stairsId of options) {
+      const path = findShortestPath(startId, stairsId, nodes, edges);
+      if (path.length > 0 && path.length < bestLen) {
+        bestLen = path.length;
+        bestStairs = stairsId;
+        bestPath = path;
+      }
+    }
+    return { stairsId: bestStairs, pathToStairs: bestPath };
+  } else {
+    const path = findShortestPath(startId, 'stairs_workshop_f1', nodes, edges);
+    return { stairsId: 'stairs_workshop_f1', pathToStairs: path };
+  }
 }
 
 export function buildGlobalRoute(
@@ -93,51 +124,69 @@ export function buildGlobalRoute(
   targetId: string, 
   currentNodes: MapNode[], 
   currentEdges: MapEdge[]
-): RouteStepInfo {
+): RouteStepInfo | null {
   
-  const STAIRS_ID = 'stairs_main'; 
+  // =====================================================================
+  // СЦЕНАРІЙ 0: Користувач знаходиться на території (ВУЛИЦЯ)
+  // =====================================================================
+  if (currentBuilding === 0) {
+      if (targetBuilding === 1) { 
+          const path = findShortestPath(startId, 'entrance_b1', currentNodes, currentEdges);
+          return {
+              instruction: `Прямуйте до Головного корпусу ➔`,
+              nextBuilding: 1, nextFloor: 1, 
+              nextStartId: 'start_entrance', // З'являємось на Вході 2
+              isMultiFloor: false, isMultiBuilding: true,
+              pathNodes: path
+          };
+      }
+      if (targetBuilding === 2) { 
+          const path = findShortestPath(startId, 'entrance_b2', currentNodes, currentEdges);
+          return {
+              instruction: `Прямуйте до Майстерень ➔`,
+              nextBuilding: 2, nextFloor: 1, 
+              nextStartId: 'entrance_b2', // З'являємось в Майстернях
+              isMultiFloor: false, isMultiBuilding: true,
+              pathNodes: path.length > 0 ? path : [{ id: startId, x: currentNodes.find(n=>n.id===startId)?.x||0, y: currentNodes.find(n=>n.id===startId)?.y||0 }]
+          };
+      }
+  }
 
   // =====================================================================
   // СЦЕНАРІЙ 1: Нам потрібно в ІНШИЙ КОРПУС
   // =====================================================================
-  if (currentBuilding !== targetBuilding) {
+  if (currentBuilding !== targetBuilding && currentBuilding !== 0) {
     
     // Крок 1.1: Якщо ми не на 1-му поверсі, спершу треба спуститись!
     if (currentFloor !== 1) {
-      const pathToStairs = findShortestPath(startId, STAIRS_ID, currentNodes, currentEdges);
+      // 🔥 Знаходимо найближчі сходи від поточної позиції
+      const { stairsId, pathToStairs } = findNearestStairs(startId, currentBuilding, currentNodes, currentEdges);
       return {
         pathNodes: pathToStairs,
         isMultiFloor: true,
-        isMultiBuilding: false, // Корпус поки не міняємо, тільки спускаємось
+        isMultiBuilding: false,
         instruction: 'Спустіться на 1 поверх ➔',
         nextFloor: 1,
         nextBuilding: currentBuilding,
-        nextStartId: STAIRS_ID
+        nextStartId: stairsId
       };
     }
 
     // Крок 1.2: Ми на 1-му поверсі. Йдемо до виходу з корпусу!
-    let TRANSIT_EXIT_ID = '';
-    let TRANSIT_ENTER_ID = '';
+    // 🔥 Якщо ми в Корпусі 1, ведемо до Входу 2 (start_entrance). Якщо в Майстернях — до entrance_b2
+    let exitId = currentBuilding === 1 ? 'start_entrance' : 'entrance_b2';
+    let streetStartId = currentBuilding === 1 ? 'entrance_b1' : 'entrance_b2'; 
 
-    if (currentBuilding === 1 && targetBuilding === 2) {
-      TRANSIT_EXIT_ID = 'start_corp2'; // Йдемо до цих дверей в 1 корпусі
-      TRANSIT_ENTER_ID = 'start_corp1'; // З'явимось біля цих дверей у 2 корпусі
-    } else if (currentBuilding === 2 && targetBuilding === 1) {
-      TRANSIT_EXIT_ID = 'start_corp1'; // Йдемо до цих дверей в 2 корпусі
-      TRANSIT_ENTER_ID = 'start_corp2'; // З'явимось біля цих дверей в 1 корпусі
-    }
-
-    const pathToTransit = findShortestPath(startId, TRANSIT_EXIT_ID, currentNodes, currentEdges);
+    const pathToExit = findShortestPath(startId, exitId, currentNodes, currentEdges);
 
     return {
-      pathNodes: pathToTransit,
+      pathNodes: pathToExit,
       isMultiFloor: false,
       isMultiBuilding: true,
-      instruction: `Перейдіть у Корпус ${targetBuilding} ➔`,
-      nextFloor: 1, // Заходимо завжди на 1 поверх
-      nextBuilding: targetBuilding,
-      nextStartId: TRANSIT_ENTER_ID // Починаємо маршрут від вхідних дверей нового корпусу!
+      instruction: `Вийдіть на вулицю ➔`,
+      nextFloor: 1, 
+      nextBuilding: 0, // Перемикаємо на ТЕРИТОРІЮ (0)
+      nextStartId: streetStartId 
     };
   }
 
@@ -145,7 +194,9 @@ export function buildGlobalRoute(
   // СЦЕНАРІЙ 2: Ми у потрібному корпусі, але на ІНШОМУ ПОВЕРСІ
   // =====================================================================
   if (currentFloor !== targetFloor) {
-    const pathToStairs = findShortestPath(startId, STAIRS_ID, currentNodes, currentEdges);
+    // 🔥 Знаходимо найближчі сходи (враховує випадок коли вже стоїмо на них)
+    const { stairsId, pathToStairs } = findNearestStairs(startId, currentBuilding, currentNodes, currentEdges);
+
     const actionWord = targetFloor > currentFloor ? 'Підніміться' : 'Спустіться';
 
     return {
@@ -155,7 +206,7 @@ export function buildGlobalRoute(
       instruction: `${actionWord} на ${targetFloor} поверх ➔`,
       nextFloor: targetFloor,
       nextBuilding: currentBuilding,
-      nextStartId: STAIRS_ID
+      nextStartId: stairsId
     };
   }
 
@@ -163,13 +214,17 @@ export function buildGlobalRoute(
   // СЦЕНАРІЙ 3: Ми на потрібному поверсі у потрібному корпусі! (Фініш)
   // =====================================================================
   const path = findShortestPath(startId, targetId, currentNodes, currentEdges);
-  return {
-    pathNodes: path,
-    isMultiFloor: false,
-    isMultiBuilding: false,
-    instruction: 'Ви на місці!',
-    nextFloor: null,
-    nextBuilding: null,
-    nextStartId: targetId
-  };
+  if (path.length > 0) {
+      return {
+          pathNodes: path,
+          isMultiFloor: false,
+          isMultiBuilding: false,
+          instruction: 'Ви на місці!',
+          nextFloor: null,
+          nextBuilding: null,
+          nextStartId: targetId
+      };
+  }
+
+  return null;
 }

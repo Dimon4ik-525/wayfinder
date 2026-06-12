@@ -6,11 +6,9 @@ import { Colors } from '../constants/theme';
 type TopBarProps = {
   selectedDate: Date;
   onDateChange: (newDate: Date) => void;
-  groupName?: string; 
-  currentWeek?: string; 
 };
 
-export default function TopBar({ selectedDate, onDateChange, groupName, currentWeek }: TopBarProps) {
+export default function TopBar({ selectedDate, onDateChange }: TopBarProps) {
   const [showPicker, setShowPicker] = useState(false);
 
   const changeDay = (days: number) => {
@@ -34,7 +32,7 @@ export default function TopBar({ selectedDate, onDateChange, groupName, currentW
     return `${date.getDate()} ${months[date.getMonth()]}, ${days[date.getDay()]}`;
   };
 
-  // 🔥 НОВА РОЗУМНА ФУНКЦІЯ ВИКЛИКУ КАЛЕНДАРЯ
+  // 🔥 РОЗУМНА ФУНКЦІЯ ВИКЛИКУ КАЛЕНДАРЯ
   const openPicker = () => {
     if (Platform.OS === 'web') {
       // Знаходимо наш схований інпут і програмно відкриваємо його
@@ -55,15 +53,6 @@ export default function TopBar({ selectedDate, onDateChange, groupName, currentW
 
   return (
     <View style={styles.topBar}>
-      {/* Вибір групи */}
-      <View style={styles.groupSelector}>
-        <Text style={styles.groupTextLabel}>Група:</Text>
-        <Text style={styles.groupTextValue}>{groupName || 'Оберіть групу'}</Text>
-        {currentWeek ? (
-           <Text style={styles.weekText}>({currentWeek})</Text>
-        ) : null}
-      </View>
-
       {/* КАЛЕНДАР */}
       <View style={styles.dateSelector}>
         <TouchableOpacity onPress={() => changeDay(-1)} style={styles.arrowBtn}>
@@ -71,14 +60,14 @@ export default function TopBar({ selectedDate, onDateChange, groupName, currentW
         </TouchableOpacity>
 
         <View style={{ position: 'relative' }}>
-          {/* 🔥 Кнопка тепер використовує нашу нову функцію */}
+          {/* Кнопка виклику календаря */}
           <TouchableOpacity onPress={openPicker}>
             <View style={styles.dateBadge}>
               <Text style={styles.dateBadgeText}>📅 {formatDate(selectedDate)}</Text>
             </View>
           </TouchableOpacity>
 
-          {/* 🔥 Схований інпут для Web, який ми викликаємо за ID */}
+          {/* Схований інпут для Web, який ми викликаємо за ID */}
           {Platform.OS === 'web' && createElement('input', {
             id: 'web-date-input',
             type: 'date',
@@ -110,18 +99,16 @@ export default function TopBar({ selectedDate, onDateChange, groupName, currentW
 }
 
 const styles = StyleSheet.create({
-  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, justifyContent: 'space-between' },
-  groupSelector: {
-    flexDirection: 'row',
-    backgroundColor: Colors.white,
-    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
-    borderWidth: 1, borderColor: '#E2E8F0',
+  topBar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'flex-end' // Зміщено праворуч, оскільки група тепер зліва
   },
-  groupTextLabel: { fontSize: 18, color: Colors.textSecondary, marginRight: 8 },
-  groupTextValue: { fontSize: 18, fontWeight: 'bold', color: Colors.textMain },
-  weekText: { fontSize: 14, color: '#64748B', marginLeft: 8 }, 
-  
-  dateSelector: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateSelector: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8 
+  },
   arrowBtn: { 
     backgroundColor: Colors.white, 
     paddingHorizontal: 16, 

@@ -1,43 +1,49 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import Svg, { Rect, Path, Circle, Text as SvgText, TSpan, G } from 'react-native-svg';
+import Svg, { Rect, Path, Circle, Text as SvgText, TSpan, G, Defs, Pattern, Line, Polygon } from 'react-native-svg';
 import { Colors } from '../constants/theme';
 import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-view';
 
-interface MapCanvasProps {
+export interface MapCanvasProps {
   rooms: any[];
-  startPoints?: { id: string; label?: string; x: number; y: number }[]; // 🔥 Масив усіх стартових точок (сходів/входів)
-  activeStartId?: string; // 🔥 ID активної точки (щоб зробити її червоною "ВИ ТУТ")
-  kioskPosition: { x: number; y: number }; // Залишаємо для сумісності з 1 поверхом, якщо там немає startPoints
+  startPoints?: { id: string; label?: string; x: number; y: number }[];
+  activeStartId?: string;
   viewBox: string;
   wallsPath: string;
   targetRoomId: string | null;
   routePath: string;
   onRoomSelect: (roomId: string | null) => void;
   staticLabels?: { id: string, text: string, x: number, y: number, fontSize?: number, color?: string }[];
+  roofZones?: any[];
+  roadZones?: string[];
+  onStartPointSelect?: (startId: string) => void;
+  isTerritory?: boolean;
 }
 
 export default function MapCanvas({ 
   rooms, 
-  startPoints = [], // За замовчуванням порожній масив
+  startPoints = [], 
   activeStartId,
-  kioskPosition, 
   viewBox, 
   wallsPath, 
   targetRoomId, 
   routePath, 
   onRoomSelect,
-  staticLabels
+  staticLabels,
+  roofZones = [],
+  roadZones = [],
+  onStartPointSelect,
+  isTerritory = false,
 }: MapCanvasProps) {
 
   const zoomRef = useRef<any>(null);
   const currentZoom = useRef<number>(1);
   const [resetKey, setResetKey] = useState(0);
 
-  if (rooms.length === 0) {
+  if (rooms.length === 0 && !wallsPath && roofZones.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>Мапа для цього поверху ще в розробці...</Text>
+        <Text style={styles.emptyText}>Мапа для цього об'єкта ще в розробці...</Text>
       </View>
     );
   }
@@ -81,50 +87,61 @@ export default function MapCanvas({
         }}
       >
         <Svg width="100%" height="100%" viewBox={viewBox} preserveAspectRatio="xMidYMid meet">
-          {wallsPath !== "" && (
-            <Path d={wallsPath} stroke="#9CA3AF" strokeWidth="6" fill="none" />
-          )}
+          
+          <Defs>
+            <Pattern id="diagonalHatch" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <Line x1="0" y1="0" x2="0" y2="40" stroke="#E2E8F0" strokeWidth="4" />
+            </Pattern>
 
-          {staticLabels && staticLabels.map((label) => (
-            <SvgText
-              key={label.id}
-              x={label.x}
-              y={label.y}
-              fill={label.color || '#9CA3AF'}
-              fontSize={label.fontSize || 60}
-              fontWeight="bold"
-              textAnchor="middle"
-              alignmentBaseline="middle"
+            <Pattern id="roadHatch" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+              <Line x1="0" y1="0" x2="0" y2="40" stroke="#CBD5E1" strokeWidth="6" />
+            </Pattern>
+          </Defs>
+
+          {/* ДОРОГИ */}
+          {roadZones.map((roadPoints, index) => (
+            <Polygon 
+              key={`road-${index}`} 
+              points={roadPoints} 
+              fill="url(#roadHatch)" 
+              stroke="#94A3B8" 
+              strokeWidth="4" 
               pointerEvents="none"
-            >
-              {label.text}
-            </SvgText>
+            />
           ))}
 
-          {rooms.map((room) => {
-            const isActive = room.id === targetRoomId;
-            const lines = (room.label || '').split('\n');
-            const lineHeight = 60;
-            const startY = room.y + (room.height / 2) - ((lines.length - 1) * lineHeight / 2) + 20;
+          {/* ДАХИ */}
+          {roofZones.map((roof) => {
+            let textX = roof.textX !== undefined ? roof.textX : roof.x + (roof.width || 0) / 2;
+            let textY = roof.textY !== undefined ? roof.textY : roof.y + (roof.height || 0) / 2;
+
+            if (roof.points && roof.textX === undefined && roof.textY === undefined) {
+              const pairs = roof.points.trim().split(/\s+/);
+              let sumX = 0, sumY = 0, count = 0;
+              pairs.forEach((pair: string) => { 
+                const [strX, strY] = pair.split(',');
+                const numX = parseFloat(strX);
+                const numY = parseFloat(strY);
+                if (!isNaN(numX) && !isNaN(numY)) { sumX += numX; sumY += numY; count++; }
+              });
+              if (count > 0) { textX = sumX / count; textY = sumY / count; }
+            }
+
+            const lines = (roof.label || '').split('\n');
+            const fontSize = 55;
+            const lineHeight = fontSize * 1.3;
+            const startY = textY - ((lines.length - 1) * lineHeight / 2) + (fontSize / 3);
 
             return (
-              <G key={room.id} onPress={() => handleRoomPress(room.id)}>
-                <Rect 
-                  x={room.x} y={room.y} width={room.width} height={room.height} 
-                  fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 
-                  stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
-                />
-                
-                <SvgText 
-                  x={room.x + (room.width / 2)} y={startY} 
-                  fill={isActive ? Colors.white : Colors.textMain} 
-                  fontSize={45} fontWeight="bold" textAnchor="middle"
-                  rotation={room.rotateText ? -90 : 0}
-                  originX={room.x + (room.width / 2)}
-                  originY={room.y + (room.height / 2)}
-                >
+              <G key={roof.id}>
+                {roof.points ? (
+                  <Polygon points={roof.points} fill="url(#diagonalHatch)" stroke="#CBD5E1" strokeWidth="4" strokeDasharray="15, 10" pointerEvents="none" />
+                ) : (
+                  <Rect x={roof.x} y={roof.y} width={roof.width || 0} height={roof.height || 0} fill="url(#diagonalHatch)" stroke="#CBD5E1" strokeWidth="4" strokeDasharray="15, 10" rx="8" pointerEvents="none" />
+                )}
+                <SvgText x={textX} y={startY} fill="#475569" fontSize={fontSize} fontWeight="bold" textAnchor="middle" pointerEvents="none">
                   {lines.map((line: string, index: number) => (
-                    <TSpan key={index} x={room.x + (room.width / 2)} dy={index === 0 ? 0 : lineHeight}>
+                    <TSpan key={index} x={textX} dy={index === 0 ? 0 : lineHeight}>
                       {line}
                     </TSpan>
                   ))}
@@ -133,37 +150,121 @@ export default function MapCanvas({
             );
           })}
 
+          {wallsPath !== "" && (
+            <Path d={wallsPath} stroke="#9CA3AF" strokeWidth="6" fill="none" />
+          )}
+
+          {/* КІМНАТИ ТА БУДІВЛІ */}
+          {rooms.map((room) => {
+            const isActive = room.id === targetRoomId;
+            
+            let textX = room.textX !== undefined ? room.textX : room.x + (room.width || 0) / 2;
+            let textY = room.textY !== undefined ? room.textY : room.y + (room.height || 0) / 2;
+
+            if (room.points && room.textX === undefined && room.textY === undefined) {
+              const pairs = room.points.trim().split(/\s+/);
+              let sumX = 0, sumY = 0, count = 0;
+              pairs.forEach((pair: string) => { 
+                const [strX, strY] = pair.split(',');
+                const numX = parseFloat(strX);
+                const numY = parseFloat(strY);
+                if (!isNaN(numX) && !isNaN(numY)) { sumX += numX; sumY += numY; count++; }
+              });
+              if (count > 0) { textX = sumX / count; textY = sumY / count; }
+            }
+
+            const lines = (room.label || '').split('\n');
+            const customFontSize = room.fontSize || 50; 
+            const lineHeight = customFontSize * 1.3;
+            const startY = textY - ((lines.length - 1) * lineHeight / 2) + (customFontSize / 3);
+
+            return (
+              <G key={room.id} onPress={() => handleRoomPress(room.id)}>
+                {room.points ? (
+                  <Polygon 
+                    points={room.points}
+                    fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 
+                    stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" 
+                  />
+                ) : (
+                  <Rect 
+                    x={room.x} y={room.y} width={room.width} height={room.height} 
+                    fill={isActive ? Colors.primary : 'rgba(226, 232, 240, 0.5)'} 
+                    stroke={isActive ? Colors.primary : '#CBD5E1'} strokeWidth="4" rx="16" 
+                  />
+                )}
+                
+                <SvgText 
+                  x={textX} y={startY} 
+                  fill={isActive ? Colors.white : Colors.textMain} 
+                  fontSize={customFontSize} fontWeight="bold" textAnchor="middle"
+                  rotation={room.rotateText ? -90 : 0}
+                  originX={textX}
+                  originY={textY}
+                >
+                  {lines.map((line: string, index: number) => (
+                    <TSpan key={index} x={textX} dy={index === 0 ? 0 : lineHeight}>
+                      {line}
+                    </TSpan>
+                  ))}
+                </SvgText>
+              </G>
+            );
+          })}
+
+          {/* 🔥 СТАТИЧНІ ЛЕЙБЛИ (Переміщені СЮДИ, щоб малюватися ПОВЕРХ будівель) 🔥 */}
+          {staticLabels && staticLabels.map((label) => {
+            const lines = (label.text || '').split('\n');
+            const fontSize = label.fontSize || 60;
+            const lineHeight = fontSize * 1.3;
+            const startY = label.y - ((lines.length - 1) * lineHeight / 2) + (fontSize / 3);
+
+            return (
+              <SvgText key={label.id} x={label.x} y={startY} fill={label.color || '#9CA3AF'} fontSize={fontSize} fontWeight="bold" textAnchor="middle" pointerEvents="none">
+                {lines.map((line: string, index: number) => (
+                  <TSpan key={index} x={label.x} dy={index === 0 ? 0 : lineHeight}>
+                    {line}
+                  </TSpan>
+                ))}
+              </SvgText>
+            );
+          })}
+
           {targetRoomId && routePath !== "" && (
             <Path d={routePath} stroke={Colors.primary} strokeWidth="24" strokeDasharray="40, 30" fill="none" strokeLinejoin="round" />
           )}
 
-          {/* 🔥 ЛОГІКА ВІДОБРАЖЕННЯ ТОЧОК */}
-          {startPoints && startPoints.length > 0 ? (
-            /* Якщо є масив startPoints (наприклад, 2-й поверх) - малюємо ВСІ сходи */
-            startPoints.map((sp) => {
-              const isActive = sp.id === activeStartId;
-              // Активна точка - червона (ВИ ТУТ), інші - сині (СХОДИ)
-              const fillColor = isActive ? Colors.error : Colors.primary;
-              return (
-                <G key={`start-${sp.id}`} x={sp.x} y={sp.y}>
-                  <Circle cx="0" cy="0" r="80" fill={fillColor} opacity="0.2" />
-                  <Circle cx="0" cy="0" r="30" fill={fillColor} />
-                  <SvgText x="0" y="140" fill={fillColor} fontSize="50" fontWeight="bold" textAnchor="middle">
-                    {isActive ? 'ВИ ТУТ' : 'СХОДИ'}
-                  </SvgText>
-                </G>
-              );
-            })
-          ) : (
-            /* Якщо масиву немає (стара логіка 1-го поверху з кіоском) - малюємо одну точку */
-            kioskPosition && (
-              <G x={kioskPosition.x} y={kioskPosition.y}>
-                <Circle cx="0" cy="0" r="80" fill={Colors.error} opacity="0.2" />
-                <Circle cx="0" cy="0" r="30" fill={Colors.error} />
-                <SvgText x="0" y="140" fill={Colors.error} fontSize="60" fontWeight="bold" textAnchor="middle">ВИ ТУТ</SvgText>
+          {/* СТАРТОВІ ТОЧКИ */}
+          {startPoints.map((sp) => {
+            const isActive = sp.id === activeStartId;
+            const fillColor = isActive ? Colors.error : Colors.primary;
+
+            let inactiveText = sp.label || 'СХОДИ';
+            if (!sp.label && sp.id === 'start_main') inactiveText = 'ВХІД №1';
+            if (!sp.label && sp.id === 'start_entrance') inactiveText = 'ВХІД №2';
+
+            const hitboxRadius = isTerritory ? "300" : "120";
+            const haloRadius = isTerritory ? "200" : "80";
+            const coreRadius = isTerritory ? "80" : "30";
+            const textY = isTerritory ? "280" : "100";
+            const textSize = isTerritory ? 180 : 42;
+
+            return (
+              <G
+                key={`start-${sp.id}`}
+                x={sp.x}
+                y={sp.y}
+                onPress={() => !isActive && onStartPointSelect?.(sp.id)}
+              >
+                <Circle cx="0" cy="0" r={hitboxRadius} fill={fillColor} opacity={0} />
+                <Circle cx="0" cy="0" r={haloRadius} fill={fillColor} opacity={isActive ? 0.2 : 0.1} />
+                <Circle cx="0" cy="0" r={coreRadius} fill={fillColor} />
+                <SvgText x="0" y={textY} fill={fillColor} fontSize={textSize} fontWeight="bold" textAnchor="middle">
+                  {isActive ? 'ВИ ТУТ' : inactiveText}
+                </SvgText>
               </G>
-            )
-          )}
+            );
+          })}
         </Svg>
       </ReactNativeZoomableView>
 
