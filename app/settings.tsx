@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/theme';
+import Footer from '../components/Footer'; // 🔥 Імпортуємо наш новий компонент
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -34,59 +35,66 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>⬅ Назад</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Налаштування</Text>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>📍 Стандартний вхід до корпусу</Text>
-        <Text style={styles.cardSubtitle}>
-          Оберіть вхід, від якого за замовчуванням будуть будуватися всі маршрути на мапі.
-        </Text>
-
-        <View style={styles.optionsContainer}>
-          <TouchableOpacity 
-            style={[styles.optionBtn, selectedStart === 'start_main' && styles.optionBtnActive]}
-            onPress={() => handleSelect('start_main')}
-          >
-            <Text style={[styles.optionText, selectedStart === 'start_main' && styles.optionTextActive]}>
-              Вхід 1 - Корпус 1 (Центральний)
-            </Text>
+      
+      <View style={{ flex: 1 }}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>⬅ Назад</Text>
           </TouchableOpacity>
+          <Text style={styles.title}>Налаштування</Text>
+        </View>
 
-          <TouchableOpacity 
-            style={[styles.optionBtn, selectedStart === 'start_entrance' && styles.optionBtnActive]}
-            onPress={() => handleSelect('start_entrance')}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>📍 Стандартний вхід до корпусу</Text>
+          <Text style={styles.cardSubtitle}>
+            Оберіть вхід, від якого за замовчуванням будуть будуватися всі маршрути на мапі.
+          </Text>
+
+          <View style={styles.optionsContainer}>
+            <TouchableOpacity 
+              style={[styles.optionBtn, selectedStart === 'start_main' && styles.optionBtnActive]}
+              onPress={() => handleSelect('start_main')}
+            >
+              <Text style={[styles.optionText, selectedStart === 'start_main' && styles.optionTextActive]}>
+                Вхід 1 - Корпус 1 (Центральний)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.optionBtn, selectedStart === 'start_entrance' && styles.optionBtnActive]}
+              onPress={() => handleSelect('start_entrance')}
+            >
+              <Text style={[styles.optionText, selectedStart === 'start_entrance' && styles.optionTextActive]}>
+                Вхід 2 - Корпус 2 (Задній)
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>🎓 Режим приймальної комісії</Text>
+          <Text style={styles.cardSubtitle}>
+            Кабінет 12 стає «Приймальна для ФМБ», а Читальна зала — «Приймальна для кваліфікованих».
+          </Text>
+          <TouchableOpacity
+            style={[styles.toggleBtn, isAdmissionMode && styles.toggleBtnActive]}
+            onPress={handleToggleAdmission}
           >
-            <Text style={[styles.optionText, selectedStart === 'start_entrance' && styles.optionTextActive]}>
-              Вхід 2 - Корпус 2 (Задній)
+            <Text style={[styles.toggleText, isAdmissionMode && styles.toggleTextActive]}>
+              {isAdmissionMode ? '✅ Увімкнено' : '⬜ Вимкнено'}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>🎓 Режим приймальної комісії</Text>
-        <Text style={styles.cardSubtitle}>
-          Кабінет 12 стає «Приймальна для ФМБ», а Читальна зала — «Приймальна для кваліфікованих».
-        </Text>
-        <TouchableOpacity
-          style={[styles.toggleBtn, isAdmissionMode && styles.toggleBtnActive]}
-          onPress={handleToggleAdmission}
-        >
-          <Text style={[styles.toggleText, isAdmissionMode && styles.toggleTextActive]}>
-            {isAdmissionMode ? '✅ Увімкнено' : '⬜ Вимкнено'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+
+      {/* 🔥 Викликаємо компонент футера (він тепер завжди знизу) */}
+      <Footer/>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 40, backgroundColor: Colors.background },
+  container: { paddingBottom: 10, flex: 1, padding: 40, backgroundColor: Colors.background },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 40 },
   backButton: { padding: 10, backgroundColor: Colors.white, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginRight: 20 },
   backButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textMain },
