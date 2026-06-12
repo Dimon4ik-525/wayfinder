@@ -113,6 +113,7 @@ export default function MapScreen() {
   const [lastScheduleGroup, setLastScheduleGroup] = useState<any>(null);
 
   const [routeInfo, setRouteInfo] = useState<RouteStepInfo | null>(null);
+  const [isRouteLocked, setIsRouteLocked] = useState(false);
   const [initialRouteConfig, setInitialRouteConfig] = useState<{building: number, floor: number, startId: string} | null>(null);
   const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
   const [pendingRoom, setPendingRoom] = useState<RoomData | null>(null);
@@ -164,14 +165,21 @@ export default function MapScreen() {
         }
         const admissionSaved = await AsyncStorage.getItem('admissionMode');
         if (admissionSaved === 'true') setIsAdmissionMode(true);
-        const savedGroup = await AsyncStorage.getItem('lastSelectedGroup');
-        if (savedGroup) setLastScheduleGroup(JSON.parse(savedGroup));
+        
+        // 🔥 ПЕРЕВІРКА: Читаємо групу тільки якщо ми прийшли через "Як пройти?"
+        if (params.fromSchedule === 'true') {
+          const savedGroup = await AsyncStorage.getItem('lastSelectedGroup');
+          if (savedGroup) setLastScheduleGroup(JSON.parse(savedGroup));
+        } else {
+          setLastScheduleGroup(null); // Якщо зайшли самі - ніякої кнопки
+        }
+
       } catch (e) {
         console.warn("Не вдалося завантажити налаштування входу", e);
       }
     };
     loadStartPoint();
-  }, []);
+  }, [params.fromSchedule]);
 
   useEffect(() => {
     if (params.room) {
@@ -186,6 +194,7 @@ export default function MapScreen() {
         }
         setPendingRoom(foundRoom);
         setTargetRoomId(foundRoom.id);
+        setIsRouteLocked(true);
       } else {
         setSearchQuery(roomParam);
       }
@@ -213,6 +222,7 @@ export default function MapScreen() {
         });
 
   const handleSelectRoomFromSearch = (room: any) => {
+    if (isRouteLocked) return;
     if (!initialRouteConfig) {
       setInitialRouteConfig({ building: activeBuilding, floor: activeFloor, startId: activeStartId });
     }
@@ -222,6 +232,7 @@ export default function MapScreen() {
   };
 
   const handleQuickLink = (targetId: string) => {
+    if (isRouteLocked) return;
     const foundRoom = ALL_ROOMS.find(r => r.id === targetId);
     if (foundRoom) {
       handleSelectRoomFromSearch(foundRoom);
@@ -236,6 +247,7 @@ export default function MapScreen() {
   };
 
   const handleRoomClick = (roomId: string | null) => {
+    if (isRouteLocked) return;
     if (activeBuilding === 0) {
       if (roomId === 'b_main') {
         setActiveBuilding(1); setActiveFloor(1); setTargetRoomId(null); return;
@@ -489,7 +501,7 @@ export default function MapScreen() {
     } else {
       setActiveFloor(1); setActiveBuilding(1); setActiveStartId(globalSavedStartId); 
     }
-    setTargetRoomId(null); setSearchQuery(''); setRouteInfo(null); setRouteHistory([]); setInitialRouteConfig(null); setPendingRoom(null);
+    setTargetRoomId(null); setSearchQuery(''); setRouteInfo(null); setRouteHistory([]); setInitialRouteConfig(null); setPendingRoom(null); setIsRouteLocked(false);
     try {
       await AsyncStorage.removeItem('lastSelectedGroup');
       setLastScheduleGroup(null);
@@ -530,7 +542,7 @@ export default function MapScreen() {
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput 
               style={styles.searchInput}
-              placeholder={isNarrowSearch ? "Пошук..." : "Пошук кабінету (напр. Кабінет 25)"}
+              placeholder={isNarrowSearch ? "Пошук..." : "Пошук кабінету"}
               placeholderTextColor={Colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -678,7 +690,7 @@ export default function MapScreen() {
           targetRoomId={targetRoomId}
           routePath={generateRoutePathString()}
           onRoomSelect={handleRoomClick}
-          onStartPointSelect={activeBuilding === 1 && activeFloor === 1 ? undefined : handleStartPointClick}
+          onStartPointSelect={activeBuilding === 0 || (activeBuilding === 1 && activeFloor === 1) ? undefined : handleStartPointClick}
           staticLabels={currentLabels} 
           roofZones={currentRoofs} 
           roadZones={currentRoads}
@@ -705,7 +717,7 @@ export default function MapScreen() {
               </TouchableOpacity>
               {lastScheduleGroup && (
                 <TouchableOpacity style={[styles.instructionButton, styles.scheduleButton]} onPress={handleGoToSchedule}>
-                  <Text style={styles.instructionText}> {lastScheduleGroup.name}</Text>
+                  <Text style={styles.instructionText}> Порвернутись до розкладу групи: {lastScheduleGroup.name}</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -734,7 +746,7 @@ const styles = StyleSheet.create({
   
   searchWrapper: { 
     width: '100%', 
-    maxWidth: 320, 
+    maxWidth: 230, // було 310
     zIndex: 50, 
     elevation: 50 
   },

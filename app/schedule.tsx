@@ -213,7 +213,7 @@ export default function ScheduleScreen() {
             </View>
         ) : !selectedGroup ? (
             <View style={styles.centerContainer}>
-                <Text style={{color: '#64748B'}}>👈 Оберіть групу в меню вище, щоб побачити розклад</Text>
+                <Text style={{color: '#64748B', fontSize: 20, fontWeight: '500'}}>☝️ Щоб побачити розклад - оберіть групу в меню вище</Text>
             </View>
         ) : scheduleData.length === 0 && substitutions.length === 0 ? (
              <View style={styles.centerContainer}>

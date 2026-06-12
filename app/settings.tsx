@@ -53,7 +53,7 @@ export default function SettingsScreen() {
             onPress={() => handleSelect('start_main')}
           >
             <Text style={[styles.optionText, selectedStart === 'start_main' && styles.optionTextActive]}>
-              Вхід 1 (Центральний)
+              Вхід 1 - Корпус 1 (Центральний)
             </Text>
           </TouchableOpacity>
 
@@ -62,7 +62,7 @@ export default function SettingsScreen() {
             onPress={() => handleSelect('start_entrance')}
           >
             <Text style={[styles.optionText, selectedStart === 'start_entrance' && styles.optionTextActive]}>
-              Вхід 2 (Задній)
+              Вхід 2 - Корпус 2 (Задній)
             </Text>
           </TouchableOpacity>
         </View>
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   backButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textMain },
   title: { fontSize: 32, fontWeight: 'bold', color: Colors.textMain },
   
-  card: { backgroundColor: Colors.white, padding: 30, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0' },
+  card: { backgroundColor: Colors.white, marginBottom: 20, padding: 30, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0' },
   cardTitle: { fontSize: 22, fontWeight: 'bold', color: Colors.textMain, marginBottom: 10 },
   cardSubtitle: { fontSize: 16, color: Colors.textSecondary, marginBottom: 30 },
   

@@ -6,18 +6,18 @@ import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-vi
 
 export interface MapCanvasProps {
   rooms: any[];
-  startPoints?: { id: string; label?: string; x: number; y: number }[]; // Масив усіх стартових точок (сходів/входів)
-  activeStartId?: string; // ID активної точки (щоб зробити її червоною "ВИ ТУТ")
+  startPoints?: { id: string; label?: string; x: number; y: number }[];
+  activeStartId?: string;
   viewBox: string;
   wallsPath: string;
   targetRoomId: string | null;
   routePath: string;
   onRoomSelect: (roomId: string | null) => void;
   staticLabels?: { id: string, text: string, x: number, y: number, fontSize?: number, color?: string }[];
-  roofZones?: any[]; // 🔥 Дозволяємо передавати будь-які об'єкти даху або пустий масив
+  roofZones?: any[];
   roadZones?: string[];
   onStartPointSelect?: (startId: string) => void;
-  isTerritory?: boolean; // 🔥 Додали сюди, щоб TypeScript знав про цей параметр
+  isTerritory?: boolean;
 }
 
 export default function MapCanvas({ 
@@ -33,14 +33,13 @@ export default function MapCanvas({
   roofZones = [],
   roadZones = [],
   onStartPointSelect,
-  isTerritory = false, // 🔥 Додали сюди, щоб компонент міг його приймати (за замовчуванням false)
+  isTerritory = false,
 }: MapCanvasProps) {
 
   const zoomRef = useRef<any>(null);
   const currentZoom = useRef<number>(1);
   const [resetKey, setResetKey] = useState(0);
 
-  // 🔥 Заглушка показується тільки тоді, коли немає ні кімнат, ні стін, ні дахів
   if (rooms.length === 0 && !wallsPath && roofZones.length === 0) {
     return (
       <View style={styles.centerContainer}>
@@ -90,18 +89,16 @@ export default function MapCanvas({
         <Svg width="100%" height="100%" viewBox={viewBox} preserveAspectRatio="xMidYMid meet">
           
           <Defs>
-            {/* 🔥 ШАБЛОН ДІАГОНАЛЬНОЇ ШТРИХОВКИ ДЛЯ ДАХІВ */}
             <Pattern id="diagonalHatch" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
               <Line x1="0" y1="0" x2="0" y2="40" stroke="#E2E8F0" strokeWidth="4" />
             </Pattern>
 
-            {/* 🔥 НОВИЙ ПАТЕРН ДЛЯ ДОРІГ */}
             <Pattern id="roadHatch" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
               <Line x1="0" y1="0" x2="0" y2="40" stroke="#CBD5E1" strokeWidth="6" />
             </Pattern>
           </Defs>
 
-          {/* 🔥 РЕНДЕР ДОРІГ */}
+          {/* ДОРОГИ */}
           {roadZones.map((roadPoints, index) => (
             <Polygon 
               key={`road-${index}`} 
@@ -113,9 +110,8 @@ export default function MapCanvas({
             />
           ))}
 
-          {/* 🔥 РОЗУМНИЙ РЕНДЕРИНГ ЗОН ДАХУ */}
+          {/* ДАХИ */}
           {roofZones.map((roof) => {
-            // 🔥 РУЧНЕ АБО АВТОМАТИЧНЕ ЦЕНТРУВАННЯ ТЕКСТУ
             let textX = roof.textX !== undefined ? roof.textX : roof.x + (roof.width || 0) / 2;
             let textY = roof.textY !== undefined ? roof.textY : roof.y + (roof.height || 0) / 2;
 
@@ -131,6 +127,11 @@ export default function MapCanvas({
               if (count > 0) { textX = sumX / count; textY = sumY / count; }
             }
 
+            const lines = (roof.label || '').split('\n');
+            const fontSize = 55;
+            const lineHeight = fontSize * 1.3;
+            const startY = textY - ((lines.length - 1) * lineHeight / 2) + (fontSize / 3);
+
             return (
               <G key={roof.id}>
                 {roof.points ? (
@@ -138,8 +139,12 @@ export default function MapCanvas({
                 ) : (
                   <Rect x={roof.x} y={roof.y} width={roof.width || 0} height={roof.height || 0} fill="url(#diagonalHatch)" stroke="#CBD5E1" strokeWidth="4" strokeDasharray="15, 10" rx="8" pointerEvents="none" />
                 )}
-                <SvgText x={textX} y={textY} fill="#475569" fontSize={55} fontWeight="bold" textAnchor="middle" alignmentBaseline="central" pointerEvents="none">
-                  {roof.label}
+                <SvgText x={textX} y={startY} fill="#475569" fontSize={fontSize} fontWeight="bold" textAnchor="middle" pointerEvents="none">
+                  {lines.map((line: string, index: number) => (
+                    <TSpan key={index} x={textX} dy={index === 0 ? 0 : lineHeight}>
+                      {line}
+                    </TSpan>
+                  ))}
                 </SvgText>
               </G>
             );
@@ -149,17 +154,10 @@ export default function MapCanvas({
             <Path d={wallsPath} stroke="#9CA3AF" strokeWidth="6" fill="none" />
           )}
 
-          {staticLabels && staticLabels.map((label) => (
-            <SvgText key={label.id} x={label.x} y={label.y} fill={label.color || '#9CA3AF'} fontSize={label.fontSize || 60} fontWeight="bold" textAnchor="middle" alignmentBaseline="middle" pointerEvents="none">
-              {label.text}
-            </SvgText>
-          ))}
-
-          {/* 🔥 РЕНДЕР КІМНАТ ТА БУДІВЕЛЬ (Підтримує і Rect, і Polygon) */}
+          {/* КІМНАТИ ТА БУДІВЛІ */}
           {rooms.map((room) => {
             const isActive = room.id === targetRoomId;
             
-            // 🔥 РУЧНЕ АБО АВТОМАТИЧНЕ ЦЕНТРУВАННЯ ТЕКСТУ
             let textX = room.textX !== undefined ? room.textX : room.x + (room.width || 0) / 2;
             let textY = room.textY !== undefined ? room.textY : room.y + (room.height || 0) / 2;
 
@@ -176,7 +174,7 @@ export default function MapCanvas({
             }
 
             const lines = (room.label || '').split('\n');
-            const customFontSize = room.fontSize || 50; // Дозволяє робити текст на будівлях більшим
+            const customFontSize = room.fontSize || 50; 
             const lineHeight = customFontSize * 1.3;
             const startY = textY - ((lines.length - 1) * lineHeight / 2) + (customFontSize / 3);
 
@@ -214,6 +212,24 @@ export default function MapCanvas({
             );
           })}
 
+          {/* 🔥 СТАТИЧНІ ЛЕЙБЛИ (Переміщені СЮДИ, щоб малюватися ПОВЕРХ будівель) 🔥 */}
+          {staticLabels && staticLabels.map((label) => {
+            const lines = (label.text || '').split('\n');
+            const fontSize = label.fontSize || 60;
+            const lineHeight = fontSize * 1.3;
+            const startY = label.y - ((lines.length - 1) * lineHeight / 2) + (fontSize / 3);
+
+            return (
+              <SvgText key={label.id} x={label.x} y={startY} fill={label.color || '#9CA3AF'} fontSize={fontSize} fontWeight="bold" textAnchor="middle" pointerEvents="none">
+                {lines.map((line: string, index: number) => (
+                  <TSpan key={index} x={label.x} dy={index === 0 ? 0 : lineHeight}>
+                    {line}
+                  </TSpan>
+                ))}
+              </SvgText>
+            );
+          })}
+
           {targetRoomId && routePath !== "" && (
             <Path d={routePath} stroke={Colors.primary} strokeWidth="24" strokeDasharray="40, 30" fill="none" strokeLinejoin="round" />
           )}
@@ -227,12 +243,11 @@ export default function MapCanvas({
             if (!sp.label && sp.id === 'start_main') inactiveText = 'ВХІД №1';
             if (!sp.label && sp.id === 'start_entrance') inactiveText = 'ВХІД №2';
 
-            // 🔥 Динамічні розміри залежно від того, чи ми на території (isTerritory)
             const hitboxRadius = isTerritory ? "300" : "120";
             const haloRadius = isTerritory ? "200" : "80";
             const coreRadius = isTerritory ? "80" : "30";
             const textY = isTerritory ? "280" : "100";
-            const textSize = isTerritory ? 120 : 42;
+            const textSize = isTerritory ? 180 : 42;
 
             return (
               <G
@@ -241,16 +256,9 @@ export default function MapCanvas({
                 y={sp.y}
                 onPress={() => !isActive && onStartPointSelect?.(sp.id)}
               >
-                {/* Невидима зона для легшого кліку */}
                 <Circle cx="0" cy="0" r={hitboxRadius} fill={fillColor} opacity={0} />
-                
-                {/* Напівпрозорий ореол */}
                 <Circle cx="0" cy="0" r={haloRadius} fill={fillColor} opacity={isActive ? 0.2 : 0.1} />
-                
-                {/* Сама центральна точка */}
                 <Circle cx="0" cy="0" r={coreRadius} fill={fillColor} />
-                
-                {/* Текст під точкою */}
                 <SvgText x="0" y={textY} fill={fillColor} fontSize={textSize} fontWeight="bold" textAnchor="middle">
                   {isActive ? 'ВИ ТУТ' : inactiveText}
                 </SvgText>

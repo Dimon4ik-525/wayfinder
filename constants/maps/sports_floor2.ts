@@ -11,11 +11,11 @@ export const ROOMS = [
 ];
 
 export const START_POINTS = [
-  { id: 's_stairs_sports_f2', label: 'ВИ ТУТ', x: 2200, y: 350 }
+  { id: 'stairs_sports_f2', label: 'ВИ ТУТ', x: 2200, y: 350 }
 ];
 
 export const NODES = [
-  { id: 's_stairs_sports_f2', x: 2200, y: 350 }, 
+  { id: 'stairs_sports_f2', x: 2200, y: 350 }, 
   { id: 'gym_2', x: 1400, y: 665 },      
   { id: 'assembly', x: 2180, y: 800 }, 
   { id: 'locker1', x: 1800, y: 550 },
@@ -28,7 +28,7 @@ export const NODES = [
 ];
 
 export const EDGES = [
-  { from: 's_stairs_sports_f2', to: 's_assembly' },
+  { from: 'stairs_sports_f2', to: 's_assembly' },
   { from: 's_assembly', to: 'assembly' },
 
   { from: 's_assembly', to: 's_gym_2' },

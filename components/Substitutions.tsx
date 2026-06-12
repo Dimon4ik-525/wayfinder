@@ -7,7 +7,7 @@ export default function Substitutions({ data }: { data: any[] }) {
 
   if (!data || data.length === 0) return null;
 
-  const handleMapNavigation = (room: string) => {
+const handleMapNavigation = (room: string) => {
     if (!room || room === '—') return;
 
     const lowerRoom = room.toLowerCase();
@@ -24,7 +24,10 @@ export default function Substitutions({ data }: { data: any[] }) {
 
     router.push({
       pathname: '/map', 
-      params: { room: room }
+      params: { 
+        room: room,
+        fromSchedule: 'true' // 🔥 Додали цей рядок, щоб мапа знала, звідки ми прийшли
+      }
     });
   };
 
@@ -110,27 +113,27 @@ export default function Substitutions({ data }: { data: any[] }) {
 const styles = StyleSheet.create({
   substitutionsBox: {
     backgroundColor: '#FFFBEB',
-    borderRadius: 12, 
-    paddingVertical: 10, 
-    paddingHorizontal: 16,
+    borderRadius: 8, 
+    paddingVertical: 6, 
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#FDE68A',
     marginBottom: 15,
   },
-  subsTitle: { fontSize: 15, fontWeight: 'bold', color: '#D97706', marginBottom: 8 }, 
-  subsHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#FDE68A', paddingBottom: 4, marginBottom: 4 },
-  subsColumnText: { fontSize: 12, color: '#9CA3AF', fontWeight: 'bold' },
-  subsRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#FDE68A', paddingVertical: 8 }, 
-  subsRowText: { fontSize: 14, color: '#4B5563' },
-  subsRowTextBold: { fontSize: 14, fontWeight: 'bold', color: '#1F2937' },
+  subsTitle: { fontSize: 14, fontWeight: 'bold', color: '#D97706', marginBottom: 4 }, 
+  subsHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#FDE68A', paddingBottom: 2, marginBottom: 4 },
+  subsColumnText: { fontSize: 11, color: '#9CA3AF', fontWeight: 'bold' },
+  subsRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#FDE68A', paddingVertical: 4 }, 
+  subsRowText: { fontSize: 13, color: '#4B5563' },
+  subsRowTextBold: { fontSize: 13, fontWeight: 'bold', color: '#1F2937' },
   subsRowSubtext: { fontSize: 12, color: '#9CA3AF', flexShrink: 1 }, 
-  subsBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 100, width: 70, alignItems: 'center', justifyContent: 'center' },
+  subsBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 100, width: 70, alignItems: 'center', justifyContent: 'center' },
   
   // 🔥 Виправлені стилі кнопки для замін
   routeButton: { 
     backgroundColor: Colors.primary, 
-    paddingHorizontal: 12, // Зменшили відступ, щоб текст вліз
-    paddingVertical: 8, 
+    paddingHorizontal: 8, // Зменшили відступ, щоб текст вліз
+    paddingVertical: 6, 
     borderRadius: 100,
     alignItems: 'center',
     justifyContent: 'center'
@@ -140,7 +143,7 @@ const styles = StyleSheet.create({
   },
   routeButtonText: { 
     color: Colors.white, 
-    fontSize: 12, // Трохи зменшили шрифт, щоб було акуратно в один ряд
+    fontSize: 11, // Трохи зменшили шрифт, щоб було акуратно в один ряд
     fontWeight: 'bold' 
   },
 });
