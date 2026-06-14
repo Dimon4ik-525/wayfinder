@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,6 +12,11 @@ import TimeIndicator, { LessonLayout } from '../components/TimeIndicator';
 
 export default function ScheduleScreen() {
   const router = useRouter();
+  
+  // 🔥 Отримуємо розміри екрана для адаптивності
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768; // Якщо менше 768px - вважаємо, що це телефон
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
@@ -24,27 +29,23 @@ export default function ScheduleScreen() {
   const [lessonLayouts, setLessonLayouts] = useState<LessonLayout[]>([]);
 
   useEffect(() => {
-  const loadSavedGroup = async () => {
-    try {
-      const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
-      // 🔥 Одразу видаляємо прапорець
-      await AsyncStorage.removeItem('returnToSchedule');
+    const loadSavedGroup = async () => {
+      try {
+        const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
+        await AsyncStorage.removeItem('returnToSchedule');
 
-      if (shouldKeep === 'true') {
-        // Повернення з мапи — відновлюємо групу
-        const saved = await AsyncStorage.getItem('lastSelectedGroup');
-        if (saved) setSelectedGroup(JSON.parse(saved));
-      } else {
-        // Звичайний вхід — скидаємо групу
-        await AsyncStorage.removeItem('lastSelectedGroup');
-        setSelectedGroup(null);
-      }
-    } catch (e) {}
-  };
-  loadSavedGroup();
-}, []);
+        if (shouldKeep === 'true') {
+          const saved = await AsyncStorage.getItem('lastSelectedGroup');
+          if (saved) setSelectedGroup(JSON.parse(saved));
+        } else {
+          await AsyncStorage.removeItem('lastSelectedGroup');
+          setSelectedGroup(null);
+        }
+      } catch (e) {}
+    };
+    loadSavedGroup();
+  }, []);
 
-  // 🔥 Зберігаємо групу при зміні
   const handleSelectGroup = async (group: any) => {
     setSelectedGroup(group);
     try {
@@ -106,10 +107,8 @@ export default function ScheduleScreen() {
             let selectedDayOfWeek = selectedDate.getDay();
             if (selectedDayOfWeek === 0) selectedDayOfWeek = 7; 
 
-            // Беремо ВСІ пари на цей день
             const dailyLessonsRaw = rawData.schedules.filter((item: any) => item.day_of_week === selectedDayOfWeek);
 
-            // 🔥 ГРУПУЄМО ЇХ ЗА НОМЕРОМ ПАРИ
             const groupedLessons = new Map<number, any[]>();
             dailyLessonsRaw.forEach((item: any) => {
                 const id = item.lesson?.id || 99; 
@@ -119,7 +118,6 @@ export default function ScheduleScreen() {
 
             const formattedSchedule: ScheduleCardProps[] = [];
 
-            // Формуємо масив карток
             groupedLessons.forEach((lessonsArr, id) => {
                 const baseLesson = lessonsArr[0].lesson;
 
@@ -181,9 +179,9 @@ export default function ScheduleScreen() {
   const isToday = selectedDate.toDateString() === new Date().toDateString();
 
   return (
-    <View style={styles.container}>
+    // 🔥 Динамічні відступи: на телефоні менші (10), на ПК більші (20)
+    <View style={[styles.container, { padding: isMobile ? 12 : 20 }]}>
       
-      {/* 🔥 ОБ'ЄДНАНИЙ РЯДОК ДЛЯ ШАПКИ (ВИБІР ГРУПИ + ДАТА) */}
       <View style={styles.headerRow}>
         <View style={styles.selectorContainer}>
           <GroupSelector 
@@ -213,7 +211,16 @@ export default function ScheduleScreen() {
             </View>
         ) : !selectedGroup ? (
             <View style={styles.centerContainer}>
-                <Text style={{color: '#64748B', fontSize: 20, fontWeight: '500'}}>☝️ Щоб побачити розклад - оберіть групу в меню вище</Text>
+                {/* 🔥 Адаптивний текст: на ПК 20px, на телефоні 16px + центрування */}
+                <Text style={{
+                  color: '#64748B', 
+                  fontSize: isMobile ? 16 : 20, 
+                  fontWeight: '500',
+                  textAlign: 'center',
+                  paddingHorizontal: isMobile ? 15 : 0
+                }}>
+                  ☝️ Щоб побачити розклад - оберіть групу в меню вище
+                </Text>
             </View>
         ) : scheduleData.length === 0 && substitutions.length === 0 ? (
              <View style={styles.centerContainer}>
@@ -254,19 +261,18 @@ export default function ScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: Colors.background }, // padding тепер задається динамічно вище
   
-  // 🔥 НОВІ СТИЛІ ДЛЯ ШАПКИ В ОДИН РЯДОК
   headerRow: {
-    flexDirection: 'row',       // Елементи стоятимуть зліва направо
-    alignItems: 'center',       // Вирівнювання по вертикалі по центру
-    justifyContent: 'space-between', // Розштовхуємо їх по краях
+    flexDirection: 'row',       
+    alignItems: 'center',       
+    justifyContent: 'space-between', 
     marginBottom: 15,
-    zIndex: 100,                // Дуже важливо, щоб дропдаун перекривав картки нижче
+    zIndex: 100,                
   },
   selectorContainer: { 
-    //flex: 1,                    // Займає весь вільний простір зліва
-    marginRight: 15,            // Відступ від блоку з датою
+    flex: 1,                    // 🔥 ПОВЕРНУТО! Тепер дропдаун розтягується і не виштовхує календар
+    marginRight: 10,            // Трохи зменшили відступ для телефонів
     zIndex: 100,
   },
   topBarContainer: {
