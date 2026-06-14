@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/theme';
-import Footer from '../components/Footer'; // 🔥 Імпортуємо наш новий компонент
+import Footer from '../components/Footer';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -34,9 +34,12 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      
-      <View style={{ flex: 1 }}>
+    <View style={styles.mainWrapper}>
+      {/* 🔥 Додали ScrollView для прокрутки контенту */}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>⬅ Назад</Text>
@@ -85,16 +88,28 @@ export default function SettingsScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* 🔥 Викликаємо компонент футера (він тепер завжди знизу) */}
-      <Footer/>
+        {/* 🔥 Обгортка футера, яка відштовхує його вниз */}
+        <View style={styles.footerWrapper}>
+          <Footer/>
+        </View>
+        
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 10, flex: 1, padding: 40, backgroundColor: Colors.background },
+  mainWrapper: { 
+    flex: 1, 
+    backgroundColor: Colors.background 
+  },
+  scrollContainer: { 
+    flexGrow: 1, // 🔥 Дозволяє контенту розтягуватися на весь екран і притискати футер
+    paddingHorizontal: 40,
+    paddingTop: 40,
+    paddingBottom: 20, // Задаємо відступ знизу, щоб контент не прилипав до краю при прокрутці
+  },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 40 },
   backButton: { padding: 10, backgroundColor: Colors.white, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginRight: 20 },
   backButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textMain },
@@ -113,4 +128,11 @@ const styles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: Colors.primaryGhost, borderColor: Colors.primary },
   toggleText: { fontSize: 18, fontWeight: 'bold', color: Colors.textSecondary },
   toggleTextActive: { color: Colors.primary },
+
+  // 🔥 Стиль для правильного позиціонування футера
+  footerWrapper: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    marginTop: 20,
+  }
 });
