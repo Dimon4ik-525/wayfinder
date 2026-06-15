@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
+// 🔥 ДОДАНО Platform
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,8 +40,14 @@ export default function SettingsScreen() {
   return (
     <View style={styles.mainWrapper}>
       <ScrollView 
-        // На телефоні збільшуємо відступ знизу (наприклад 100px), щоб контент не ховався за таббаром
-        contentContainerStyle={[styles.scrollContainer, { paddingBottom: isMobile ? 80 : 10 }]}
+        contentContainerStyle={[
+          styles.scrollContainer, 
+          { 
+            paddingBottom: isMobile ? 80 : 10,
+            // 🔥 Для веб-браузера відступ 15, для додатку на телефоні 40
+            paddingTop: Platform.OS === 'web' ? 15 : 40 
+          }
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Адаптивний заголовок */}
@@ -94,7 +101,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Футер тепер відштовхується вниз */}
+        {/* Обгортка футера, яка відштовхує його вниз */}
         <View style={styles.footerWrapper}>
           <Footer/>
         </View>
@@ -111,20 +118,20 @@ const styles = StyleSheet.create({
   },
   scrollContainer: { 
     flexGrow: 1, 
-    paddingHorizontal: '5%', // Гнучкі відступи по боках замість жорстких 40px
-    paddingTop: 40,
+    paddingHorizontal: '5%', 
+    // paddingTop перенесено в інлайн-стилі вище
   },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 40 },
-  headerMobile: { marginBottom: 20 }, // Менший відступ на телефоні
+  headerMobile: { marginBottom: 20 }, 
   
   backButton: { padding: 10, backgroundColor: Colors.white, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', marginRight: 15 },
   backButtonText: { fontSize: 16, fontWeight: 'bold', color: Colors.textMain },
   
   title: { fontSize: 32, fontWeight: 'bold', color: Colors.textMain },
-  titleMobile: { fontSize: 26 }, // Менший шрифт на телефоні
+  titleMobile: { fontSize: 26 }, 
   
   card: { backgroundColor: Colors.white, marginBottom: 20, padding: 30, borderRadius: 24, borderWidth: 1, borderColor: '#E2E8F0' },
-  cardMobile: { padding: 20, borderRadius: 20 }, // Менші внутрішні відступи для карток на телефоні
+  cardMobile: { padding: 20, borderRadius: 20 }, 
   
   cardTitle: { fontSize: 22, fontWeight: 'bold', color: Colors.textMain, marginBottom: 10 },
   cardTitleMobile: { fontSize: 18 },
@@ -133,7 +140,7 @@ const styles = StyleSheet.create({
   cardSubtitleMobile: { fontSize: 14, marginBottom: 20 },
   
   optionsContainer: { flexDirection: 'row', gap: 16 },
-  optionsContainerMobile: { flexDirection: 'column', gap: 12 }, // 🔥 На телефоні в колонку
+  optionsContainerMobile: { flexDirection: 'column', gap: 12 }, 
   
   optionBtn: { flex: 1, padding: 20, borderRadius: 16, backgroundColor: '#F8FAFC', borderWidth: 2, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' },
   optionBtnActive: { backgroundColor: Colors.primaryGhost, borderColor: Colors.primary },

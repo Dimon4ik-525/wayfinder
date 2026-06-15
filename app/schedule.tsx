@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
+// 🔥 ДОДАНО Platform
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -184,9 +185,8 @@ export default function ScheduleScreen() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ 
-          // Відступ зверху, щоб звільнити місце для плаваючої шапки
-          paddingTop: isMobile ? 180 : 120, 
-          // Відступ знизу, щоб пари не налізали на нижнє меню (Tab Bar)
+          // 🔥 Якщо браузер — відступ менший (150 замість 180)
+          paddingTop: isMobile ? (Platform.OS === 'web' ? 150 : 180) : 120, 
           paddingBottom: 140, 
           paddingHorizontal: isMobile ? 15 : 20 
         }}
@@ -255,7 +255,8 @@ export default function ScheduleScreen() {
       <View style={[
         styles.absoluteHeader,
         {
-          paddingTop: isMobile ? 50 : 20,
+          // 🔥 Якщо браузер — відступ менший (20 замість 50)
+          paddingTop: (isMobile && Platform.OS !== 'web') ? 50 : 20,
           paddingHorizontal: isMobile ? 15 : 20,
         }
       ]}>
@@ -301,18 +302,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scrollArea: { flex: 1 },
   
-  // 🔥 Стилі плаваючої шапки
+  // Стилі плаваючої шапки
   absoluteHeader: {
-    position: 'absolute', // Відриваємо від екрану
+    position: 'absolute', 
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.background, // Суцільний фон, щоб пари ховались ПІД нього
-    zIndex: 100, // Поверх усього
+    backgroundColor: Colors.background, 
+    zIndex: 100, 
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    // Легенька тінь, щоб було видно що це шапка
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,

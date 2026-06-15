@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-// 🔥 ДОДАНО Keyboard для управління клавіатурою
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions, Keyboard } from 'react-native';
+// 🔥 ДОДАНО Keyboard та Platform
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions, Keyboard, Platform } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/theme';
@@ -230,7 +230,7 @@ export default function MapScreen() {
     setPendingRoom(room as RoomData);
     setTargetRoomId(room.id);
     setSearchQuery('');
-    Keyboard.dismiss(); // 🔥 Ховаємо клавіатуру після вибору кабінету
+    Keyboard.dismiss(); 
   };
 
   const handleQuickLink = (targetId: string) => {
@@ -519,7 +519,8 @@ export default function MapScreen() {
 
   return (
     <View style={[styles.container, { 
-      paddingTop: isMobile ? 50 : 20,
+      // 🔥 ДЛЯ ВЕБ БРАУЗЕРА ВІДСТУП МЕНШИЙ (20), ДЛЯ ДОДАТКА ВЕЛИКИЙ (50)
+      paddingTop: (isMobile && Platform.OS !== 'web') ? 50 : 20, 
       paddingHorizontal: isMobile ? 15 : 20,
       paddingBottom: isMobile ? 100 : 20
     }]}>
@@ -544,7 +545,7 @@ export default function MapScreen() {
       {/* Адаптивна верхня панель */}
       <View style={[styles.topBar, isMobile && { flexDirection: 'column', alignItems: 'stretch' }]}>
         
-        {/* 🔥 Пошуку даємо найвищий zIndex (100), щоб він перекривав дропдауни */}
+        {/* Пошуку даємо найвищий zIndex (100) */}
         <View style={[styles.searchWrapper, { maxWidth: isMobile ? '100%' : 230 }]}>
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
@@ -554,7 +555,6 @@ export default function MapScreen() {
               placeholderTextColor={Colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              // 🔥 Ховаємо клавіатуру, якщо натиснуто "Search/Done"
               returnKeyType="search"
               onSubmitEditing={() => Keyboard.dismiss()}
             />
@@ -562,7 +562,6 @@ export default function MapScreen() {
 
           {searchResults.length > 0 && (
             <View style={styles.searchResults}>
-              {/* 🔥 Дозволяємо ховати клавіатуру свайпом вниз */}
               <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ maxHeight: 300 }}>
                 {searchResults.map((room) => (
                   <TouchableOpacity 
@@ -583,17 +582,17 @@ export default function MapScreen() {
           )}
         </View>
 
-        {/* 🔥 Дропдаунам даємо zIndex нижчий за пошук (10) */}
+        {/* Дропдауни */}
         <View style={[styles.selectorsWrapper, isMobile && { flexWrap: 'nowrap', flexDirection: 'row', width: '100%', zIndex: 10, elevation: 10, gap: 10 }]}>
           
           {isMobile ? (
             <>
-              {/* Дропдаун корпусу (zIndex: 20) */}
+              {/* Дропдаун корпусу */}
               <View style={{ flex: 1.2, zIndex: 20, elevation: 20 }}>
                 <BuildingDropdown 
                   activeBuilding={activeBuilding} 
                   onSelect={(bld) => {
-                    Keyboard.dismiss(); // 🔥 Ховаємо клавіатуру
+                    Keyboard.dismiss(); 
                     setActiveBuilding(bld);
                     if (bld === 0) { setTargetRoomId(null); setPendingRoom(null); }
                     if (bld !== activeBuilding) setActiveFloor(1);
@@ -601,14 +600,14 @@ export default function MapScreen() {
                 />
               </View>
 
-              {/* Дропдаун поверху (zIndex: 10) */}
+              {/* Дропдаун поверху */}
               {activeBuilding !== 0 && (
                 <View style={{ flex: 0.8, zIndex: 10, elevation: 10 }}>
                   <FloorDropdown 
                     activeFloor={activeFloor} 
                     availableFloors={[1, 2, (activeBuilding === 1 || activeBuilding === 3) ? 3 : null].filter(f => f !== null) as number[]}
                     onSelect={(floor) => {
-                      Keyboard.dismiss(); // 🔥 Ховаємо клавіатуру
+                      Keyboard.dismiss(); 
                       setActiveFloor(floor);
                     }} 
                   />
@@ -710,7 +709,6 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* 🔥 Якщо тапнути в область мапи — клавіатура теж сховається */}
       <View style={styles.mapArea} onTouchStart={() => Keyboard.dismiss()}>
         <MapCanvas 
           rooms={displayRooms}
@@ -721,7 +719,7 @@ export default function MapScreen() {
           targetRoomId={targetRoomId}
           routePath={generateRoutePathString()}
           onRoomSelect={(id) => {
-            Keyboard.dismiss(); // 🔥 І ховаємо при кліку на кабінет на мапі
+            Keyboard.dismiss(); 
             handleRoomClick(id);
           }}
           onStartPointSelect={activeBuilding === 0 || (activeBuilding === 1 && activeFloor === 1) ? undefined : handleStartPointClick}
@@ -781,7 +779,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap' 
   },
   
-  // 🔥 ОНОВЛЕНІ СТИЛІ Z-INDEX 🔥
   searchWrapper: { width: '100%', zIndex: 100, elevation: 100 },
   searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   searchIcon: { fontSize: 16, marginRight: 8 },
