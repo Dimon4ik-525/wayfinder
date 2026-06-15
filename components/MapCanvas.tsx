@@ -78,9 +78,12 @@ export default function MapCanvas({
         ref={zoomRef}
         maxZoom={4}
         minZoom={1} 
-        zoomStep={0}
+        zoomStep={0.5} // Додали крок
         initialZoom={1}
         bindToBorders={true}
+        // 🔥 Ці пропси допомагають уникнути "мильної" растрової трансформації SVG
+        disablePanOnInitialZoom={true}
+        visualTouchFeedbackEnabled={false}
         style={styles.zoomableView}
         onZoomAfter={(event, gestureState, zoomEventObject) => {
           currentZoom.current = zoomEventObject.zoomLevel;
@@ -212,7 +215,7 @@ export default function MapCanvas({
             );
           })}
 
-          {/* 🔥 СТАТИЧНІ ЛЕЙБЛИ (Переміщені СЮДИ, щоб малюватися ПОВЕРХ будівель) 🔥 */}
+          {/* СТАТИЧНІ ЛЕЙБЛИ */}
           {staticLabels && staticLabels.map((label) => {
             const lines = (label.text || '').split('\n');
             const fontSize = label.fontSize || 60;
