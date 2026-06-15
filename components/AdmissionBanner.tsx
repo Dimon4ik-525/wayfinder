@@ -17,7 +17,6 @@ export default function AdmissionBanner() {
     };
     load();
 
-    // 🔥 Перевіряємо кожні 2 секунди якщо режим змінився (з settings)
     const interval = setInterval(load, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -41,17 +40,18 @@ export default function AdmissionBanner() {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingHorizontal: 20, // 🔥 Змінено з 15 на 20, щоб вирівняти з верхнім меню
-    marginBottom: 10,
+    paddingHorizontal: 15, // Вирівняно з іншими елементами сайдбару
+    marginTop: 10,         // Відступ зверху
+    marginBottom: 5,       // Зменшено відступ знизу
   },
   button: {
-    width: '100%',         // 🔥 Жорстко розтягуємо на всю доступну ширину
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.primary,
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,   // 🔥 Зроблено трохи тоншою (було 16)
+    paddingHorizontal: 15,
     gap: 8,
   },
   icon: {
@@ -60,13 +60,7 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     color: Colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
-    lineHeight: 18, // потенційно можна не використовувати, тест
-  },
-  arrow: {
-    color: Colors.white,
-    fontSize: 16,
+    fontSize: 15,          // 🔥 Трохи зменшено шрифт для компактності
     fontWeight: 'bold',
   },
 });

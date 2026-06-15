@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,6 +12,10 @@ import TimeIndicator, { LessonLayout } from '../components/TimeIndicator';
 
 export default function ScheduleScreen() {
   const router = useRouter();
+  
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768; 
+
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
@@ -24,27 +28,23 @@ export default function ScheduleScreen() {
   const [lessonLayouts, setLessonLayouts] = useState<LessonLayout[]>([]);
 
   useEffect(() => {
-  const loadSavedGroup = async () => {
-    try {
-      const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
-      // 🔥 Одразу видаляємо прапорець
-      await AsyncStorage.removeItem('returnToSchedule');
+    const loadSavedGroup = async () => {
+      try {
+        const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
+        await AsyncStorage.removeItem('returnToSchedule');
 
-      if (shouldKeep === 'true') {
-        // Повернення з мапи — відновлюємо групу
-        const saved = await AsyncStorage.getItem('lastSelectedGroup');
-        if (saved) setSelectedGroup(JSON.parse(saved));
-      } else {
-        // Звичайний вхід — скидаємо групу
-        await AsyncStorage.removeItem('lastSelectedGroup');
-        setSelectedGroup(null);
-      }
-    } catch (e) {}
-  };
-  loadSavedGroup();
-}, []);
+        if (shouldKeep === 'true') {
+          const saved = await AsyncStorage.getItem('lastSelectedGroup');
+          if (saved) setSelectedGroup(JSON.parse(saved));
+        } else {
+          await AsyncStorage.removeItem('lastSelectedGroup');
+          setSelectedGroup(null);
+        }
+      } catch (e) {}
+    };
+    loadSavedGroup();
+  }, []);
 
-  // 🔥 Зберігаємо групу при зміні
   const handleSelectGroup = async (group: any) => {
     setSelectedGroup(group);
     try {
@@ -106,10 +106,8 @@ export default function ScheduleScreen() {
             let selectedDayOfWeek = selectedDate.getDay();
             if (selectedDayOfWeek === 0) selectedDayOfWeek = 7; 
 
-            // Беремо ВСІ пари на цей день
             const dailyLessonsRaw = rawData.schedules.filter((item: any) => item.day_of_week === selectedDayOfWeek);
 
-            // 🔥 ГРУПУЄМО ЇХ ЗА НОМЕРОМ ПАРИ
             const groupedLessons = new Map<number, any[]>();
             dailyLessonsRaw.forEach((item: any) => {
                 const id = item.lesson?.id || 99; 
@@ -119,7 +117,6 @@ export default function ScheduleScreen() {
 
             const formattedSchedule: ScheduleCardProps[] = [];
 
-            // Формуємо масив карток
             groupedLessons.forEach((lessonsArr, id) => {
                 const baseLesson = lessonsArr[0].lesson;
 
@@ -183,96 +180,150 @@ export default function ScheduleScreen() {
   return (
     <View style={styles.container}>
       
-      {/* 🔥 ОБ'ЄДНАНИЙ РЯДОК ДЛЯ ШАПКИ (ВИБІР ГРУПИ + ДАТА) */}
-      <View style={styles.headerRow}>
-        <View style={styles.selectorContainer}>
-          <GroupSelector 
-            onSelectGroup={handleSelectGroup}
-            currentWeek={currentWeek}
-            value={selectedGroup}
-           />
-        </View>
+      {/* 🔥 ОСНОВНИЙ КОНТЕНТ (СКРОЛ). Він рендериться першим, тому лежить під шапкою */}
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ 
+          // Відступ зверху, щоб звільнити місце для плаваючої шапки
+          paddingTop: isMobile ? 180 : 120, 
+          // Відступ знизу, щоб пари не налізали на нижнє меню (Tab Bar)
+          paddingBottom: 140, 
+          paddingHorizontal: isMobile ? 15 : 20 
+        }}
+        style={styles.scrollArea}
+      >
         
-        <View style={styles.topBarContainer}>
-          <TopBar 
-            selectedDate={selectedDate} 
-            onDateChange={setSelectedDate} 
-          />
+        {/* Заміни тепер крутяться разом зі скролом */}
+        {substitutions.length > 0 && (
+           <Substitutions data={substitutions} />
+        )}
+
+        <View style={styles.listContainer}>
+          {isLoading ? (
+              <View style={styles.centerContainer}>
+                  <ActivityIndicator size="large" color="#3B82F6" />
+                  <Text style={{color: '#64748B', marginTop: 10}}>Завантаження розкладу...</Text>
+              </View>
+          ) : !selectedGroup ? (
+              <View style={styles.centerContainer}>
+                  <Text style={{
+                    color: '#64748B', 
+                    fontSize: isMobile ? 16 : 20,
+                    fontWeight: '500',
+                    textAlign: 'center',
+                  }}>
+                    ☝️ Щоб побачити розклад - оберіть групу в меню вище
+                  </Text>
+              </View>
+          ) : scheduleData.length === 0 && substitutions.length === 0 ? (
+               <View style={styles.centerContainer}>
+                  <Text style={{color: '#64748B'}}>На цей день пар немає 🎉</Text>
+              </View>
+          ) : (
+              <View style={{ position: 'relative', width: '100%' }}>
+                
+                {isToday && (
+                  <TimeIndicator layouts={lessonLayouts} now={now} />
+                )}
+
+                {scheduleData.map((lesson, index) => (
+                  <View
+                    key={index}
+                    onLayout={(e) => {
+                      const { y, height } = e.nativeEvent.layout;
+                      setLessonLayouts(prev => {
+                        const filtered = prev.filter(l => l.lessonId !== lesson.lessonId);
+                        return [...filtered, {
+                          lessonId: lesson.lessonId || index,
+                          y,
+                          height,
+                          timeStart: lesson.timeStart,
+                          timeEnd: lesson.timeEnd,
+                        }];
+                      });
+                    }}
+                  >
+                    <ScheduleCard {...lesson} />
+                  </View>
+                ))}
+              </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* 🔥 АБСОЛЮТНА ШАПКА (ПЛАВАЮЧИЙ ТОП-БАР) */}
+      <View style={[
+        styles.absoluteHeader,
+        {
+          paddingTop: isMobile ? 50 : 20,
+          paddingHorizontal: isMobile ? 15 : 20,
+        }
+      ]}>
+        <View style={[
+          styles.headerRow, 
+          { 
+            flexDirection: isMobile ? 'column-reverse' : 'row', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: 'space-between',
+            gap: 15
+          }
+        ]}>
+          
+          <View style={[
+            styles.selectorContainer, 
+            { width: isMobile ? '100%' : 250 }
+          ]}>
+            <GroupSelector 
+              onSelectGroup={handleSelectGroup}
+              currentWeek={currentWeek}
+              value={selectedGroup}
+             />
+          </View>
+          
+          <View style={[
+            styles.topBarContainer, 
+            { alignItems: isMobile ? 'center' : 'flex-end' }
+          ]}>
+            <TopBar 
+              selectedDate={selectedDate} 
+              onDateChange={setSelectedDate} 
+            />
+          </View>
+
         </View>
       </View>
-      
-      {substitutions.length > 0 && (
-         <Substitutions data={substitutions} />
-      )}
 
-      <View style={styles.listContainer}>
-        {isLoading ? (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color="#3B82F6" />
-                <Text style={{color: '#64748B', marginTop: 10}}>Завантаження розкладу...</Text>
-            </View>
-        ) : !selectedGroup ? (
-            <View style={styles.centerContainer}>
-                <Text style={{color: '#64748B', fontSize: 20, fontWeight: '500'}}>☝️ Щоб побачити розклад - оберіть групу в меню вище</Text>
-            </View>
-        ) : scheduleData.length === 0 && substitutions.length === 0 ? (
-             <View style={styles.centerContainer}>
-                <Text style={{color: '#64748B'}}>На цей день пар немає 🎉</Text>
-            </View>
-        ) : (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, width: '100%' }}>
-            
-            {isToday && (
-              <TimeIndicator layouts={lessonLayouts} now={now} />
-            )}
-
-            {scheduleData.map((lesson, index) => (
-              <View
-                key={index}
-                onLayout={(e) => {
-                  const { y, height } = e.nativeEvent.layout;
-                  setLessonLayouts(prev => {
-                    const filtered = prev.filter(l => l.lessonId !== lesson.lessonId);
-                    return [...filtered, {
-                      lessonId: lesson.lessonId || index,
-                      y,
-                      height,
-                      timeStart: lesson.timeStart,
-                      timeEnd: lesson.timeEnd,
-                    }];
-                  });
-                }}
-              >
-                <ScheduleCard {...lesson} />
-              </View>
-            ))}
-            </ScrollView>
-        )}
-      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scrollArea: { flex: 1 },
   
-  // 🔥 НОВІ СТИЛІ ДЛЯ ШАПКИ В ОДИН РЯДОК
-  headerRow: {
-    flexDirection: 'row',       // Елементи стоятимуть зліва направо
-    alignItems: 'center',       // Вирівнювання по вертикалі по центру
-    justifyContent: 'space-between', // Розштовхуємо їх по краях
-    marginBottom: 15,
-    zIndex: 100,                // Дуже важливо, щоб дропдаун перекривав картки нижче
-  },
-  selectorContainer: { 
-    //flex: 1,                    // Займає весь вільний простір зліва
-    marginRight: 15,            // Відступ від блоку з датою
-    zIndex: 100,
-  },
-  topBarContainer: {
-    flexShrink: 0,              // Блок дати не буде стискатися
+  // 🔥 Стилі плаваючої шапки
+  absoluteHeader: {
+    position: 'absolute', // Відриваємо від екрану
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.background, // Суцільний фон, щоб пари ховались ПІД нього
+    zIndex: 100, // Поверх усього
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    // Легенька тінь, щоб було видно що це шапка
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 5,
   },
 
+  headerRow: { zIndex: 100 },
+  selectorContainer: { zIndex: 100 },
+  topBarContainer: { zIndex: 1 },
+
   listContainer: { flex: 1, position: 'relative', alignItems: 'stretch' },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centerContainer: { marginTop: 40, justifyContent: 'center', alignItems: 'center' },
 });

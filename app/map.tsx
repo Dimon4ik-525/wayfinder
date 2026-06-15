@@ -1,10 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions } from 'react-native';
+// 🔥 ДОДАНО Keyboard для управління клавіатурою
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions, Keyboard } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/theme';
 
 import MapCanvas from '../components/MapCanvas';
+import BuildingDropdown from '../components/BuildingDropdown'; 
+import FloorDropdown from '../components/FloorDropdown';       
 
 LogBox.ignoreLogs([
   'Unknown event handler property',
@@ -100,7 +103,9 @@ const ADMISSION_QUICK_LINKS: { label: string; roomId: string; icon?: string }[] 
 export default function MapScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  
   const { width } = useWindowDimensions();
+  const isMobile = width < 768; 
   const isNarrowSearch = width < 850; 
 
   const [activeBuilding, setActiveBuilding] = useState(1); 
@@ -118,17 +123,14 @@ export default function MapScreen() {
   const [routeHistory, setRouteHistory] = useState<{building: number, floor: number, startId: string}[]>([]);
   const [pendingRoom, setPendingRoom] = useState<RoomData | null>(null);
 
-  // 🔥 Стан та Refs для клікабельних стрілочок
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollX = useRef(0);
-  const layoutWidth = useRef(0); // Ширина самого вікна скролу
-  const contentWidth = useRef(0); // Загальна ширина всіх кнопок
+  const layoutWidth = useRef(0); 
+  const contentWidth = useRef(0); 
   
   const [showLeftArrow, setShowLeftArrow] = useState(false);
-  // За замовчуванням ставимо false, щоб стрілка не блимала на широких екранах
   const [showRightArrow, setShowRightArrow] = useState(false); 
 
-  // Розумна функція перевірки видимості стрілок
   const checkArrowsVisibility = (offsetX: number) => {
     if (contentWidth.current <= layoutWidth.current) {
       setShowLeftArrow(false);
@@ -166,12 +168,11 @@ export default function MapScreen() {
         const admissionSaved = await AsyncStorage.getItem('admissionMode');
         if (admissionSaved === 'true') setIsAdmissionMode(true);
         
-        // 🔥 ПЕРЕВІРКА: Читаємо групу тільки якщо ми прийшли через "Як пройти?"
         if (params.fromSchedule === 'true') {
           const savedGroup = await AsyncStorage.getItem('lastSelectedGroup');
           if (savedGroup) setLastScheduleGroup(JSON.parse(savedGroup));
         } else {
-          setLastScheduleGroup(null); // Якщо зайшли самі - ніякої кнопки
+          setLastScheduleGroup(null); 
         }
 
       } catch (e) {
@@ -229,6 +230,7 @@ export default function MapScreen() {
     setPendingRoom(room as RoomData);
     setTargetRoomId(room.id);
     setSearchQuery('');
+    Keyboard.dismiss(); // 🔥 Ховаємо клавіатуру після вибору кабінету
   };
 
   const handleQuickLink = (targetId: string) => {
@@ -516,7 +518,11 @@ export default function MapScreen() {
   const showInstructionBar = targetRoomId !== null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { 
+      paddingTop: isMobile ? 50 : 20,
+      paddingHorizontal: isMobile ? 15 : 20,
+      paddingBottom: isMobile ? 100 : 20
+    }]}>
       
       <Text style={styles.mapTitle}>
         {activeBuilding === 0 ? 'Територія коледжу — ' : `${activeFloor} поверх — `}
@@ -535,9 +541,11 @@ export default function MapScreen() {
         </Text>
       </Text>
 
-      <View style={styles.topBar}>
+      {/* Адаптивна верхня панель */}
+      <View style={[styles.topBar, isMobile && { flexDirection: 'column', alignItems: 'stretch' }]}>
         
-        <View style={styles.searchWrapper}>
+        {/* 🔥 Пошуку даємо найвищий zIndex (100), щоб він перекривав дропдауни */}
+        <View style={[styles.searchWrapper, { maxWidth: isMobile ? '100%' : 230 }]}>
           <View style={styles.searchContainer}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput 
@@ -546,12 +554,16 @@ export default function MapScreen() {
               placeholderTextColor={Colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              // 🔥 Ховаємо клавіатуру, якщо натиснуто "Search/Done"
+              returnKeyType="search"
+              onSubmitEditing={() => Keyboard.dismiss()}
             />
           </View>
 
           {searchResults.length > 0 && (
             <View style={styles.searchResults}>
-              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 300 }}>
+              {/* 🔥 Дозволяємо ховати клавіатуру свайпом вниз */}
+              <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ maxHeight: 300 }}>
                 {searchResults.map((room) => (
                   <TouchableOpacity 
                     key={`search-${room.building}-${room.floor}-${room.id}`} 
@@ -571,68 +583,87 @@ export default function MapScreen() {
           )}
         </View>
 
-        <View style={styles.selectorsWrapper}>
+        {/* 🔥 Дропдаунам даємо zIndex нижчий за пошук (10) */}
+        <View style={[styles.selectorsWrapper, isMobile && { flexWrap: 'nowrap', flexDirection: 'row', width: '100%', zIndex: 10, elevation: 10, gap: 10 }]}>
           
-          <View style={styles.tabSelector}>
-            <TouchableOpacity 
-              style={[styles.tabButton, activeBuilding === 1 && styles.tabButtonActive]} 
-              onPress={() => setActiveBuilding(1)}
-            >
-              <Text style={[styles.tabButtonText, activeBuilding === 1 && styles.tabButtonTextActive]}>Корпуси 1/2</Text>
-            </TouchableOpacity>
+          {isMobile ? (
+            <>
+              {/* Дропдаун корпусу (zIndex: 20) */}
+              <View style={{ flex: 1.2, zIndex: 20, elevation: 20 }}>
+                <BuildingDropdown 
+                  activeBuilding={activeBuilding} 
+                  onSelect={(bld) => {
+                    Keyboard.dismiss(); // 🔥 Ховаємо клавіатуру
+                    setActiveBuilding(bld);
+                    if (bld === 0) { setTargetRoomId(null); setPendingRoom(null); }
+                    if (bld !== activeBuilding) setActiveFloor(1);
+                  }} 
+                />
+              </View>
 
-            <TouchableOpacity 
-              style={[styles.tabButton, activeBuilding === 2 && styles.tabButtonActive]} 
-              onPress={() => setActiveBuilding(2)}
-            >
-              <Text style={[styles.tabButtonText, activeBuilding === 2 && styles.tabButtonTextActive]}>Майстерні</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.tabButton, activeBuilding === 3 && styles.tabButtonActive]} 
-              onPress={() => setActiveBuilding(3)}
-            >
-              <Text style={[styles.tabButtonText, activeBuilding === 3 && styles.tabButtonTextActive]}>Спорткомплекс</Text>
-            </TouchableOpacity>
+              {/* Дропдаун поверху (zIndex: 10) */}
+              {activeBuilding !== 0 && (
+                <View style={{ flex: 0.8, zIndex: 10, elevation: 10 }}>
+                  <FloorDropdown 
+                    activeFloor={activeFloor} 
+                    availableFloors={[1, 2, (activeBuilding === 1 || activeBuilding === 3) ? 3 : null].filter(f => f !== null) as number[]}
+                    onSelect={(floor) => {
+                      Keyboard.dismiss(); // 🔥 Ховаємо клавіатуру
+                      setActiveFloor(floor);
+                    }} 
+                  />
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Старі таби для ПК */}
+              <View style={styles.tabSelector}>
+                <TouchableOpacity style={[styles.tabButton, activeBuilding === 1 && styles.tabButtonActive]} onPress={() => setActiveBuilding(1)}>
+                  <Text style={[styles.tabButtonText, activeBuilding === 1 && styles.tabButtonTextActive]}>Корпуси 1/2</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, activeBuilding === 2 && styles.tabButtonActive]} onPress={() => setActiveBuilding(2)}>
+                  <Text style={[styles.tabButtonText, activeBuilding === 2 && styles.tabButtonTextActive]}>Майстерні</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, activeBuilding === 3 && styles.tabButtonActive]} onPress={() => setActiveBuilding(3)}>
+                  <Text style={[styles.tabButtonText, activeBuilding === 3 && styles.tabButtonTextActive]}>Спорткомплекс</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, activeBuilding === 0 && styles.tabButtonActive]} onPress={() => { setActiveBuilding(0); setTargetRoomId(null); setPendingRoom(null); }}>
+                  <Text style={[styles.tabButtonText, activeBuilding === 0 && styles.tabButtonTextActive]}>Територія</Text>
+                </TouchableOpacity>
+              </View>
 
-            <TouchableOpacity 
-              style={[styles.tabButton, activeBuilding === 0 && styles.tabButtonActive]} 
-              onPress={() => { setActiveBuilding(0); setTargetRoomId(null); setPendingRoom(null); }}
-            >
-              <Text style={[styles.tabButtonText, activeBuilding === 0 && styles.tabButtonTextActive]}>Територія</Text>
-            </TouchableOpacity>
-          </View>
-
-          {activeBuilding !== 0 && (
-            <View style={styles.tabSelector}>
-              {[1, 2, (activeBuilding === 1 || activeBuilding === 3) ? 3 : null].map((floor) => {
-                if (floor === null) return null;
-                return (
-                  <TouchableOpacity 
-                    key={`f-${floor}`}
-                    style={[styles.tabButton, activeFloor === floor && styles.tabButtonActive]}
-                    onPress={() => setActiveFloor(floor)}
-                  >
-                    <Text style={[styles.tabButtonText, activeFloor === floor && styles.tabButtonTextActive]}>
-                      {floor} пов.
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+              {activeBuilding !== 0 && (
+                <View style={styles.tabSelector}>
+                  {[1, 2, (activeBuilding === 1 || activeBuilding === 3) ? 3 : null].map((floor) => {
+                    if (floor === null) return null;
+                    return (
+                      <TouchableOpacity 
+                        key={`f-${floor}`}
+                        style={[styles.tabButton, activeFloor === floor && styles.tabButtonActive]}
+                        onPress={() => setActiveFloor(floor)}
+                      >
+                        <Text style={[styles.tabButtonText, activeFloor === floor && styles.tabButtonTextActive]}>
+                          {floor} пов.
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </>
           )}
 
         </View>
 
       </View>
 
-      <View style={styles.hotkeysPanel}>
-        <Text style={styles.hotkeysTitle}>Швидкий пошук:</Text>
+      {/* Адаптивна панель гарячих клавіш */}
+      <View style={[styles.hotkeysPanel, isMobile && { flexDirection: 'column', alignItems: 'flex-start' }]}>
+        <Text style={[styles.hotkeysTitle, isMobile && { marginBottom: 8 }]}>Швидкий пошук:</Text>
         
-        {/* 🔥 Обгортаючий контейнер */}
-        <View style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
+        <View style={{ width: '100%', position: 'relative', justifyContent: 'center' }}>
           
-          {/* 🔥 ЛІВА СТРІЛКА */}
           {showLeftArrow && (
             <TouchableOpacity style={styles.scrollArrowContainerLeft} onPress={handleScrollLeft}>
               <Text style={styles.scrollArrowText}>‹</Text>
@@ -671,7 +702,6 @@ export default function MapScreen() {
             ))}
           </ScrollView>
 
-          {/* 🔥 ПРАВА СТРІЛКА */}
           {showRightArrow && (
             <TouchableOpacity style={styles.scrollArrowContainerRight} onPress={handleScrollRight}>
               <Text style={styles.scrollArrowText}>›</Text>
@@ -680,7 +710,8 @@ export default function MapScreen() {
         </View>
       </View>
 
-      <View style={styles.mapArea}>
+      {/* 🔥 Якщо тапнути в область мапи — клавіатура теж сховається */}
+      <View style={styles.mapArea} onTouchStart={() => Keyboard.dismiss()}>
         <MapCanvas 
           rooms={displayRooms}
           startPoints={currentStartPoints}
@@ -689,7 +720,10 @@ export default function MapScreen() {
           wallsPath={currentWallsPath}
           targetRoomId={targetRoomId}
           routePath={generateRoutePathString()}
-          onRoomSelect={handleRoomClick}
+          onRoomSelect={(id) => {
+            Keyboard.dismiss(); // 🔥 І ховаємо при кліку на кабінет на мапі
+            handleRoomClick(id);
+          }}
           onStartPointSelect={activeBuilding === 0 || (activeBuilding === 1 && activeFloor === 1) ? undefined : handleStartPointClick}
           staticLabels={currentLabels} 
           roofZones={currentRoofs} 
@@ -698,8 +732,10 @@ export default function MapScreen() {
         />
       </View>
 
+      {/* Оновлений блок кнопок маршрутизації */}
       {showInstructionBar && (
-        <View style={styles.instructionContainer}>
+        <View style={[styles.instructionContainer, isMobile && styles.instructionContainerMobile]}>
+          
           {routeHistory.length > 0 && (
             <TouchableOpacity style={[styles.instructionButton, styles.stepBackButton]} onPress={handleStepBack}>
               <Text style={styles.stepBackText}>⬅ Крок назад</Text>
@@ -711,16 +747,17 @@ export default function MapScreen() {
               <Text style={styles.instructionText}>{routeInfo.instruction}</Text>
             </TouchableOpacity>
           ) : (
-            <>
-              <TouchableOpacity style={[styles.instructionButton, styles.returnButton]} onPress={handleResetRoute}>
-                <Text style={styles.instructionText}> Завершити маршрут</Text>
+            <View style={[styles.actionButtonsWrapper, isMobile && styles.actionButtonsWrapperMobile]}>
+              <TouchableOpacity style={[styles.instructionButton, styles.returnButton, isMobile && styles.flexButton]} onPress={handleResetRoute}>
+                <Text style={styles.instructionText}>Завершити маршрут</Text>
               </TouchableOpacity>
+              
               {lastScheduleGroup && (
-                <TouchableOpacity style={[styles.instructionButton, styles.scheduleButton]} onPress={handleGoToSchedule}>
-                  <Text style={styles.instructionText}> Порвернутись до розкладу групи: {lastScheduleGroup.name}</Text>
+                <TouchableOpacity style={[styles.instructionButton, styles.scheduleButton, isMobile && styles.flexButton]} onPress={handleGoToSchedule}>
+                  <Text style={styles.instructionText}>Повернутися до {lastScheduleGroup.name}</Text>
                 </TouchableOpacity>
               )}
-            </>
+            </View>
           )}
         </View>
       )}
@@ -729,7 +766,7 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: Colors.background, height: '100%' },
+  container: { flex: 1, backgroundColor: Colors.background }, 
   mapTitle: { fontSize: 20, color: Colors.textMain, marginBottom: 12, fontWeight: '500' },
   
   topBar: { 
@@ -744,27 +781,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap' 
   },
   
-  searchWrapper: { 
-    width: '100%', 
-    maxWidth: 230, // було 310
-    zIndex: 50, 
-    elevation: 50 
-  },
-  
+  // 🔥 ОНОВЛЕНІ СТИЛІ Z-INDEX 🔥
+  searchWrapper: { width: '100%', zIndex: 100, elevation: 100 },
   searchContainer: { flexDirection: 'row', backgroundColor: Colors.white, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   searchIcon: { fontSize: 16, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 16, color: Colors.textMain, outlineStyle: 'none' } as any,
-  searchResults: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: Colors.white, borderRadius: 10, marginTop: 4, borderWidth: 1, borderColor: '#E2E8F0', boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)', elevation: 5, overflow: 'hidden' },
+  searchResults: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: Colors.white, borderRadius: 10, marginTop: 4, borderWidth: 1, borderColor: '#E2E8F0', boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)', elevation: 100, overflow: 'hidden' },
   searchResultItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   searchResultText: { fontSize: 16, fontWeight: 'bold', color: Colors.textMain, flexShrink: 1, marginRight: 10 }, 
   searchResultSubtext: { fontSize: 12, color: Colors.textSecondary },
   
-  selectorsWrapper: { 
-    flexDirection: 'row', 
-    alignItems: 'flex-start', 
-    gap: 10 
-  },
-  
+  selectorsWrapper: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   tabSelector: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 8, padding: 3 },
   tabButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 6 },
   tabButtonActive: { backgroundColor: Colors.white, boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)', elevation: 2 },
@@ -773,56 +800,31 @@ const styles = StyleSheet.create({
   
   hotkeysPanel: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, width: '100%', zIndex: 1 },
   hotkeysTitle: { fontSize: 14, fontWeight: 'bold', color: Colors.textSecondary, marginRight: 10, flexShrink: 0 },
-  hotkeysScroll: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 25 }, 
+  hotkeysScroll: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 15 }, 
   hotkeyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.white, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
   hotkeyIcon: { fontSize: 14 },
   hotkeyText: { fontSize: 14, fontWeight: '600', color: Colors.textMain },
   
-  scrollArrowContainerRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: -4, height: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    zIndex: 10,
-  },
-  scrollArrowContainerLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    zIndex: 10,
-  },
-  scrollArrowText: {
-    fontSize: 26,
-    color: Colors.primary,
-    fontWeight: 'bold',
-    marginTop: -4,
-  },
+  scrollArrowContainerRight: { position: 'absolute', right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.9)', justifyContent: 'center', paddingHorizontal: 12, shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, zIndex: 10 },
+  scrollArrowContainerLeft: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.9)', justifyContent: 'center', paddingHorizontal: 12, shadowColor: '#000', shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, zIndex: 10 },
+  scrollArrowText: { fontSize: 26, color: Colors.primary, fontWeight: 'bold', marginTop: -4 },
 
   mapArea: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 0, backgroundColor: Colors.white, borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: '#E2E8F0', zIndex: 1, position: 'relative' },
   
-  instructionContainer: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 16, zIndex: 10 }, 
-  instructionButton: { backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 24, boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)', elevation: 8 }, 
+  instructionContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 16, zIndex: 10 },
+  instructionContainerMobile: { flexDirection: 'column', width: '100%', alignItems: 'stretch' }, 
+  
+  actionButtonsWrapper: { flexDirection: 'row', gap: 12, justifyContent: 'center', alignItems: 'center' },
+  actionButtonsWrapperMobile: { flexDirection: 'column', width: '100%', alignItems: 'stretch' }, 
+  
+  instructionButton: { backgroundColor: Colors.primary, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12, boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)', elevation: 5, justifyContent: 'center', alignItems: 'center' }, 
+  flexButton: { width: '100%' }, 
   returnButton: { backgroundColor: '#475569' },
-  instructionText: { color: Colors.white, fontSize: 16, fontWeight: 'bold' }, 
-  stepBackButton: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.primary, paddingVertical: 10 }, 
-  stepBackText: { color: Colors.primary, fontSize: 16, fontWeight: 'bold' },
+  instructionText: { color: Colors.white, fontSize: 16, fontWeight: 'bold', textAlign: 'center' }, 
+  
+  stepBackButton: { backgroundColor: Colors.white, borderWidth: 2, borderColor: Colors.primary, paddingVertical: 12 }, 
+  stepBackText: { color: Colors.primary, fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  
   scheduleButton: { backgroundColor: Colors.primary },
   hotkeyBtnAdmission: { borderColor: Colors.primary, backgroundColor: Colors.primaryGhost },
   hotkeyTextAdmission: { color: Colors.primary },

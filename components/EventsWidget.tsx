@@ -1,4 +1,3 @@
-// components/EventsWidget.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { fetchUpcomingEvents } from '../utils/eventsApi';
@@ -9,8 +8,6 @@ export default function EventsWidget() {
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
-
-  // 🔥 Стан для автоматичної ширини слайду (за замовчуванням 250, але миттєво оновиться)
   const [slideWidth, setSlideWidth] = useState(250);
 
   useEffect(() => {
@@ -34,7 +31,6 @@ export default function EventsWidget() {
     const date = new Date(validDateString);
     if (isNaN(date.getTime())) return 'Невідома дата';
 
-    // Повні назви місяців!
     const months = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
     const day = date.getDate();
     const month = months[date.getMonth()];
@@ -78,7 +74,6 @@ export default function EventsWidget() {
   
   const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-  // Підказуємо списку точні розміри, щоб він знав, як далеко гортати
   const getItemLayout = (_: any, index: number) => ({
     length: slideWidth,
     offset: slideWidth * index,
@@ -99,12 +94,10 @@ export default function EventsWidget() {
         </View>
       ) : (
         <View>
-          {/* 🔥 onLayout вимірює ширину цього контейнера і записує в slideWidth */}
           <View 
             style={styles.carouselContainer}
             onLayout={(e) => setSlideWidth(e.nativeEvent.layout.width)}
           >
-            
             {currentIndex > 0 && (
               <TouchableOpacity style={[styles.arrowButton, styles.leftArrow]} onPress={handlePrev}>
                 <Text style={styles.arrowText}>{'<'}</Text>
@@ -116,7 +109,7 @@ export default function EventsWidget() {
               data={groupedEvents}
               horizontal
               showsHorizontalScrollIndicator={false}
-              snapToInterval={slideWidth} // Гортаємо рівно на одну ширину контейнера
+              snapToInterval={slideWidth}
               snapToAlignment="center"
               decelerationRate="fast"
               getItemLayout={getItemLayout}
@@ -124,7 +117,6 @@ export default function EventsWidget() {
               viewabilityConfig={viewConfigRef}
               keyExtractor={(_, index) => index.toString()}
               renderItem={({ item: group }) => (
-                // Кожна вкладка тепер має ширину slideWidth (100% доступного місця)
                 <View style={{ width: slideWidth, paddingHorizontal: 4, gap: 10 }}>
                   {group.map((event: any, index: number) => (
                     <View key={event.id || index} style={styles.eventCard}>
@@ -164,9 +156,9 @@ export default function EventsWidget() {
 const styles = StyleSheet.create({
   widgetContainer: {
     width: '100%',
-    paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 20,
+    paddingHorizontal: 0, // 🔥 Видалили 20px, бо в _layout.tsx вже є відступи
+    marginTop: 5,         // 🔥 Зменшили з 20 до 5
+    marginBottom: 10,     // 🔥 Зменшили з 20 до 10
   },
   widgetTitle: {
     color: '#94A3B8',
@@ -200,7 +192,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   center: {
-    height: 100,
+    paddingVertical: 20,  // 🔥 Замінили жорсткі height: 100 на гнучкий padding
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -224,10 +216,10 @@ const styles = StyleSheet.create({
     marginTop: -15, 
   },
   leftArrow: {
-    left: -10, 
+    left: 0, 
   },
   rightArrow: {
-    right: -10, // Притиснув праву стрілочку ближче до краю, щоб виглядало симетрично
+    right: 0, 
   },
   arrowText: {
     color: '#94A3B8',
