@@ -32,7 +32,7 @@ export const TERRITORY_BUILDINGS = [
   { id: 'b_sports', label: 'Спорткомлекс', building: 0, floor: 0, fontSize: 200, points: "1790,8925 3720,8925 3720,9360 4530,9360 4530,10400 1790,10400" },
   { id: 'dorm', label: 'Гуртожиток', building: 0, floor: 0, fontSize: 200, x: 320, y: 3680, width: 1160, height: 3150 },
   { id: 'stadium', label: 'Стадіон', building: 0, floor: 0, fontSize: 200, points: "3585,4910 3680,4650 3880,4500 4180,4400 4400,4400 4660,4500 4830,4650 4930,4910 4930,7770 4830,8050 4660,8230 4400,8350 4180,8350 3880,8230 3680,8050 3585,7770" },
-  { id: 'court', label: 'Баскетбольна \n площадка', building: 0, floor: 0, fontSize: 200, x: 1970, y: 4410, width: 1120, height: 1910 },
+  { id: 'court', label: 'Баскетбольний \n майданчик', building: 0, floor: 0, fontSize: 200, x: 1970, y: 4410, width: 1120, height: 1910 },
 ];
 
 export const TERRITORY_NODES = [      
