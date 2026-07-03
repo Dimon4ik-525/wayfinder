@@ -39,7 +39,7 @@ export default function ScheduleCard({ lessonNumber, timeStart, timeEnd, status,
   const handleMapNavigation = (room: string) => {
     const lowerRoom = room.toLowerCase();
     
-    if (lowerRoom.includes('с/к') || lowerRoom.includes('спортзал') || lowerRoom.includes('актова') || lowerRoom.includes('тир')) {
+    if (lowerRoom.includes('актова') || lowerRoom.includes('нувгп')) {
       if (Platform.OS === 'web') {
         window.alert("В розробці 🛠\n\nЦей об'єкт ще не додано на мапу. Працюємо над цим!");
       } else {

@@ -13,7 +13,7 @@ export const ROOMS = [
 
   // 🔥 НОВІ КІМНАТИ ПРАВОРУЧ:
   { id: 'senior_master', label: 'Старший\nмайстер', building: 2, floor: 2, x: 2195, y: 840, width: 190, height: 305 },
-  { id: 'ws_kvpia', label: 'Майстерня\nслюсарів КВПіА', building: 2, floor: 2, x: 980, y: 625, width: 695, height: 520 },
+  { id: 'лабораторія КВПіА', label: 'Майстерня\nслюсарів КВПіА', building: 2, floor: 2, x: 980, y: 625, width: 695, height: 520 },
 ];
 
 export const START_POINTS = [
@@ -43,7 +43,7 @@ export const NODES = [
 
   { id: 'c_slusar', x: 1505, y: 540 },
   { id: 'ws_slusar', x: 1505, y: 400 },
-  { id: 'ws_kvpia', x: 1500, y: 680 },
+  { id: 'лабораторія КВПіА', x: 1500, y: 680 },
 ];
 
 export const EDGES = [
@@ -62,7 +62,7 @@ export const EDGES = [
   //  З'ЄДНАННЯ КОРИДОРУ З КІМНАТАМИ
   { from: 'c_masters', to: 'room_masters' },
   { from: 'c_masters', to: 'senior_master' },
-  { from: 'node_c2', to: 'ws_kvpia' },  
+  { from: 'node_c2', to: 'лабораторія КВПіА' },  
   { from: 'c_slusar', to: 'ws_slusar' },
   { from: 'c_16', to: 'ws_16' },
   { from: 'c_17', to: 'ws_17' },

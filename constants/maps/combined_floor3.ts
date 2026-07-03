@@ -18,7 +18,7 @@ export const ROOMS = [
   // 1 корпус
   { id: '1', label: 'Кабінет 1', building: 1, floor: 3, x: 20, y: 600, width: 810, height: 270, targetStairs: 'stairs_main_b1' },
   { id: '2', label: 'Кабінет 2', building: 1, floor: 3, x: 840, y: 600, width: 645, height: 270, targetStairs: 'stairs_main_b1' },
-  { id: 'lab', label: 'Лабораторія', description:'Лабораторія хімічного аналізу / лабораторія фізико-хімічних методів аналізу',building: 1, floor: 3, x: 1670, y: 600, width: 780, height: 270, targetStairs: 'stairs_main_b1' },
+  { id: 'ХЛ', label: 'Лабораторія', description:'Лабораторія хімічного аналізу / лабораторія фізико-хімічних методів аналізу',building: 1, floor: 3, x: 1670, y: 600, width: 780, height: 270, targetStairs: 'stairs_main_b1' },
   { id: 'vagova', label: 'Вагова',building: 1, floor: 3, x: 1500, y: 600, width: 140, height: 270, targetStairs: 'stairs_main_b1' },
 
   // 2 корпус
@@ -47,13 +47,13 @@ export const NODES = [
 
   // Опорні точки (перехрестя) в коридорах (Вісь Y = 935)
   { id: 'c_start', x: 3250, y: 935 },     
-  { id: 'c_lab', x: 1880, y: 935 },      
+  { id: 'c_ХЛ', x: 1880, y: 935 },      
   { id: 'c_2', x: 1255, y: 935 },        
   { id: 'c_1', x: 535, y: 935 },  
   { id: 'c_vagova', x: 1575, y: 935},      
 
   // Входи в кабінети 
-  { id: 'lab', x: 1880, y: 800 },
+  { id: 'ХЛ', x: 1880, y: 800 },
   { id: '2', x: 1255, y: 800 },
   { id: '1', x: 535, y: 800 },
   { id: 'vagova', x: 1575, y: 800 },
@@ -84,14 +84,14 @@ export const EDGES = [
   { from: 'stairs_main_b1', to: 'c_stairs_b1' },
 
 
-  { from: 'stairs_main_b1', to: 'c_lab' },
+  { from: 'stairs_main_b1', to: 'c_ХЛ' },
 
-  { from: 'c_start', to: 'c_lab' },
-  { from: 'c_lab', to: 'c_vagova'},
+  { from: 'c_start', to: 'c_ХЛ' },
+  { from: 'c_ХЛ', to: 'c_vagova'},
   { from: 'c_vagova', to: 'c_2' },
   { from: 'c_2', to: 'c_1' },
 
-  { from: 'c_lab', to: 'lab' },
+  { from: 'c_ХЛ', to: 'ХЛ' },
   { from: 'c_2', to: '2' },
   { from: 'c_1', to: '1' },
   { from: 'c_vagova', to: 'vagova'},

@@ -26,7 +26,7 @@ export const ROOMS = [
 
 // --- КІМНАТИ КОРПУСУ 1 ---
 { id: 'changing', label: 'Роздягальня', building: 1, floor: 1, x: 20, y: 750, width: 350, height: 120 },
-{ id: 'gym', label: 'Тренажерний зал', building: 1, floor: 1, x: 150, y: 1340, width: 420, height: 870 },
+{ id: 'С/К №1', label: 'Тренажерний зал', building: 1, floor: 1, x: 150, y: 1340, width: 420, height: 870 },
 { id: '13', label: 'Кабінет 13', building: 1, floor: 1, x: 1515, y: 1970, width: 300, height: 640 },
 { id: '12', label: 'Кабінет 12', building: 1, floor: 1, x: 1515, y: 1390, width: 300, height: 565 },
 { id: 'bufet', label: 'Буфет', building: 1, floor: 1, x: 1515, y: 1235, width: 300, height: 145 },
@@ -96,7 +96,7 @@ export const NODES = [
 { id: 'c_start_corp2', x: 2530, y: 2400 }, 
 { id: 'c_13_14', x: 1880, y: 2505 }, 
 { id: 'c_changing', x: 440, y: 845 }, 
-{ id: 'c_gym', x: 440, y: 970}, 
+{ id: 'c_С/К №1', x: 440, y: 970}, 
 { id: 'c_chit', x: 2015, y: 970 }, 
 { id: '13', x: 1800, y: 2505 },
 { id: '12', x: 1810, y: 1610 },
@@ -108,7 +108,7 @@ export const NODES = [
 { id: 'bibl', x: 2000, y: 1910 },
 { id: 'chit', x: 2015, y: 1170 },
 { id: 'changing', x: 300, y: 845 },
-{ id: 'gym', x: 440, y: 1470 },
+{ id: 'С/К №1', x: 440, y: 1470 },
 { id: 'vh1', x: 1880, y: 2350 },
 { id: 'vh2', x: 2020, y: 2350 },
 
@@ -156,8 +156,8 @@ export const EDGES = [
 { from: 'c_deputy_3', to: 'c_reception' },
 { from: 'c_reception', to: 'c_director' },
 { from: 'c_reception', to: 'c_deputy_4' },
-{ from: 'c_reception', to: 'c_gym' },
-{ from: 'c_gym', to: 'c_changing' },
+{ from: 'c_reception', to: 'c_С/К №1' },
+{ from: 'c_С/К №1', to: 'c_changing' },
 
 { from: 'c_pubdep', to: 'pubdep' },
 { from: 'c_alley', to: 'alley' },
@@ -169,7 +169,7 @@ export const EDGES = [
 { from: 'c_reception', to: 'reception' },
 { from: 'c_deputy_4', to: 'deputy_4' },
 { from: 'c_changing', to: 'changing' },
-{ from: 'c_gym', to: 'gym' },
+{ from: 'c_С/К №1', to: 'С/К №1' },
 
 { from: 'main_b1', to: 'c_chit' },
 { from: 'c_chit', to: 'chit' },
