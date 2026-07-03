@@ -1,9 +1,9 @@
 import { Slot, useRouter, usePathname } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
-import { useState, useEffect } from 'react';
 import { Colors } from '../constants/theme'; 
 import EventsWidget from '../components/EventsWidget';
 import AdmissionBanner from '../components/AdmissionBanner';
+import LiveClock from '../components/LiveClock'; // 🔥 Додали імпорт нашого нового годинника
 
 export default function RootLayout() {
   const router = useRouter();
@@ -17,27 +17,6 @@ export default function RootLayout() {
   const isCollapsed = width < 900 && !isMobile; 
 
   const dynamicSidebarWidth = isCollapsed ? 90 : Math.min(Math.max(width * 0.20, 220), 260);
-
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (date: Date) => {
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-  };
-
-  const formatDate = (date: Date) => {
-    const months = ['Січня', 'Лютого', 'Березня', 'Квітня', 'Травня', 'Червня', 'Липня', 'Серпня', 'Вересня', 'Жовтня', 'Листопада', 'Грудня'];
-    return `${date.getDate()} ${months[date.getMonth()]}`;
-  };
-
-  const formatDay = (date: Date) => {
-    const days = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\'ятниця', 'Субота'];
-    return days[date.getDay()];
-  };
 
   if (pathname === '/') {
     return (
@@ -123,7 +102,6 @@ export default function RootLayout() {
           </View>
 
           {/* ВІДЖЕТ ПОДІЙ  + ВІДЖЕТ ПРИЙМАЛЬНОЇ КОМІСІЇ */}
-          
           {!isCollapsed && (
             <View style={{ flex: 1, width: '100%' }}>
               <AdmissionBanner />
@@ -135,19 +113,15 @@ export default function RootLayout() {
 
           {/* НИЖНЯ ЧАСТИНА: ГОДИННИК ТА НАЛАШТУВАННЯ */}
           <View style={styles.sidebarBottom}>
-            <View style={styles.clockContainer}>
-              <Text 
-                style={[styles.time, { fontSize: isCollapsed ? 20 : (isCompact || dynamicSidebarWidth < 260 ? 50 : 80) }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {formatTime(currentTime)}
-              </Text>
-              {!isCollapsed && <Text style={[styles.date, { fontSize: isCompact ? 18 : 24 }]}>{formatDate(currentTime)}</Text>}
-              {!isCollapsed && <Text style={[styles.day, { fontSize: isCompact ? 18 : 24 }]}>{formatDay(currentTime)}</Text>}
-            </View>
+            
+            {/* 🔥 Викликаємо наш новий незалежний годинник */}
+            <LiveClock 
+              isCollapsed={isCollapsed} 
+              isCompact={isCompact} 
+              dynamicSidebarWidth={dynamicSidebarWidth} 
+            />
 
-            {/* 🔥 КНОПКА НАЛАШТУВАНЬ (ШЕСТІРНЯ) */}
+            {/* КНОПКА НАЛАШТУВАНЬ (ШЕСТІРНЯ) */}
             <TouchableOpacity 
               style={styles.settingsButton}
               onPress={() => router.push('/settings' as any)}
@@ -225,23 +199,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // 🔥 ОНОВЛЕНО: Блок для годинника та налаштувань
   sidebarBottom: {
     width: '100%',
     alignItems: 'center',
-    position: 'relative', // Дозволяє абсолютно позиціонувати шестірню
+    position: 'relative', 
   },
-
-  clockContainer: { alignItems: 'center', paddingHorizontal: 10, marginBottom: 20 },
-  time: { fontWeight: 'bold', color: Colors.white, letterSpacing: 2, textAlign: 'center' },
-  date: { color: Colors.textSecondary, marginTop: 4, textAlign: 'center' },
-  day: { color: Colors.textSecondary, marginTop: 2, textAlign: 'center' },
   
-  // 🔥 СТИЛІ ДЛЯ КНОПКИ НАЛАШТУВАНЬ
   settingsButton: {
     position: 'absolute',
-    bottom: -10, // Відступ від нижнього краю сайдбару
-    right: 20,   // Притискаємо до правого краю, щоб не перекривати годинник
+    bottom: -10, 
+    right: 20,   
     width: 40,
     height: 40,
     borderRadius: 20,

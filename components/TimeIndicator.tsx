@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
+import { useState, useEffect } from 'react'; // 🔥 Додали хуки стану та життєвого циклу
 import { Colors } from '../constants/theme';
 
 export type LessonLayout = {
@@ -11,7 +12,7 @@ export type LessonLayout = {
 
 type Props = {
   layouts: LessonLayout[];
-  now: Date;
+  // 🔥 now більше не передаємо через пропси
 };
 
 function timeToMinutes(time: string): number {
@@ -26,11 +27,21 @@ const CARD_PADDING = 12;
 const CARD_BORDER = 2;
 const CARD_OFFSET = CARD_PADDING + CARD_BORDER; // 14px зверху і знизу
 
-export default function TimeIndicator({ layouts, now }: Props) {
+export default function TimeIndicator({ layouts }: Props) {
+  // 🔥 Створюємо власний швидкий таймер тільки для цієї лінії
+  const [internalNow, setInternalNow] = useState(new Date());
+
+  useEffect(() => {
+    // Лінія буде плавно оновлюватися кожні 10 секунд
+    const timer = setInterval(() => setInternalNow(new Date()), 1000); 
+    return () => clearInterval(timer);
+  }, []);
+
   if (layouts.length === 0) return null;
 
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  // 🔥 Використовуємо internalNow замість переданого now
+  const currentMinutes = internalNow.getHours() * 60 + internalNow.getMinutes();
+  const formattedTime = `${internalNow.getHours().toString().padStart(2, '0')}:${internalNow.getMinutes().toString().padStart(2, '0')}`;
 
   const sorted = [...layouts].sort((a, b) => a.y - b.y);
 
@@ -58,12 +69,11 @@ export default function TimeIndicator({ layouts, now }: Props) {
       const nextLesson = sorted[i + 1];
       const nextStart = timeToMinutes(nextLesson.timeStart);
 
-      
-    if (currentMinutes > end && currentMinutes < nextStart) {
-      const gapTop = lesson.y + (lesson.height - CARD_MARGIN_BOTTOM) - 1; // було - 1
-      lineY = gapTop;
-      break;
-    }  
+      if (currentMinutes > end && currentMinutes < nextStart) {
+        const gapTop = lesson.y + (lesson.height - CARD_MARGIN_BOTTOM) - 1; // було - 1
+        lineY = gapTop;
+        break;
+      }  
     }
   }
 

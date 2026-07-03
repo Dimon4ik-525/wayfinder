@@ -1,7 +1,7 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-// 🔥 ДОДАНО Keyboard та Platform
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+// 🔥 ДОДАНО Keyboard, Platform та нові хуки useCallback, useMemo
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions, Keyboard, Platform } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/theme';
 
@@ -17,28 +17,31 @@ LogBox.ignoreLogs([
   'useNativeDriver'
 ]);
 
-const originalConsoleError = console.error;
-console.error = (...args) => {
-  const msg = typeof args[0] === 'string' ? args[0] : '';
-  const param1 = typeof args[1] === 'string' ? args[1] : '';
-  if (
-    msg.includes('Unknown event handler property') ||
-    (msg.includes('Invalid DOM property') && param1 === 'transform-origin') 
-  ) { return; }
-  originalConsoleError(...args);
-};
+// 🔥 ОГОРНУТО В ПЕРЕВІРКУ НА ПРОДАКШН
+if (!__DEV__) {
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    const msg = typeof args[0] === 'string' ? args[0] : '';
+    const param1 = typeof args[1] === 'string' ? args[1] : '';
+    if (
+      msg.includes('Unknown event handler property') ||
+      (msg.includes('Invalid DOM property') && param1 === 'transform-origin') 
+    ) { return; }
+    originalConsoleError(...args);
+  };
 
-const originalConsoleWarn = console.warn;
-console.warn = (...args) => {
-  const msg = typeof args[0] === 'string' ? args[0] : '';
-  if (
-    msg.includes('"shadow*" style props') ||
-    msg.includes('TouchableMixin') ||
-    msg.includes('useNativeDriver') ||
-    msg.includes('pointerEvents')
-  ) { return; }
-  originalConsoleWarn(...args);
-};
+  const originalConsoleWarn = console.warn;
+  console.warn = (...args) => {
+    const msg = typeof args[0] === 'string' ? args[0] : '';
+    if (
+      msg.includes('"shadow*" style props') ||
+      msg.includes('TouchableMixin') ||
+      msg.includes('useNativeDriver') ||
+      msg.includes('pointerEvents')
+    ) { return; }
+    originalConsoleWarn(...args);
+  };
+}
 
 import { findShortestPath, buildGlobalRoute, RouteStepInfo } from '../utils/navigation';
 
@@ -157,30 +160,33 @@ export default function MapScreen() {
     scrollViewRef.current?.scrollTo({ x: scrollX.current + 250, animated: true });
   };
 
-  useEffect(() => {
-    const loadStartPoint = async () => {
-      try {
-        const saved = await AsyncStorage.getItem('userStartEntrance');
-        if (saved) {
-          setActiveStartId(saved);
-          globalSavedStartId = saved;
-        }
-        const admissionSaved = await AsyncStorage.getItem('admissionMode');
-        if (admissionSaved === 'true') setIsAdmissionMode(true);
-        
-        if (params.fromSchedule === 'true') {
-          const savedGroup = await AsyncStorage.getItem('lastSelectedGroup');
-          if (savedGroup) setLastScheduleGroup(JSON.parse(savedGroup));
-        } else {
-          setLastScheduleGroup(null); 
-        }
+  // 🔥 ЗАМІНЕНО НА useFocusEffect
+  useFocusEffect(
+    useCallback(() => {
+      const loadStartPoint = async () => {
+        try {
+          const saved = await AsyncStorage.getItem('userStartEntrance');
+          if (saved) {
+            setActiveStartId(saved);
+            globalSavedStartId = saved;
+          }
+          const admissionSaved = await AsyncStorage.getItem('admissionMode');
+          setIsAdmissionMode(admissionSaved === 'true');
+          
+          if (params.fromSchedule === 'true') {
+            const savedGroup = await AsyncStorage.getItem('lastSelectedGroup');
+            if (savedGroup) setLastScheduleGroup(JSON.parse(savedGroup));
+          } else {
+            setLastScheduleGroup(null); 
+          }
 
-      } catch (e) {
-        console.warn("Не вдалося завантажити налаштування входу", e);
-      }
-    };
-    loadStartPoint();
-  }, [params.fromSchedule]);
+        } catch (e) {
+          console.warn("Не вдалося завантажити налаштування входу", e);
+        }
+      };
+      loadStartPoint();
+    }, [params.fromSchedule])
+  );
 
   useEffect(() => {
     if (params.room) {
@@ -212,15 +218,20 @@ export default function MapScreen() {
     }
   }, [routeInfo]);
 
-  const searchResults = searchQuery.trim() === '' 
-    ? [] 
-    : ALL_ROOMS
-        .filter(room => room.label.toLowerCase().includes(searchQuery.toLowerCase()))
-        .sort((a, b) => {
-          const aExact = a.label.toLowerCase() === searchQuery.toLowerCase();
-          const bExact = b.label.toLowerCase() === searchQuery.toLowerCase();
-          return aExact === bExact ? 0 : aExact ? -1 : 1;
-        });
+  // 🔥 ОПТИМІЗАЦІЯ ПОШУКУ (useMemo)
+  const searchResults = useMemo(() => {
+    if (searchQuery.trim() === '') return [];
+    
+    const query = searchQuery.toLowerCase();
+    
+    return ALL_ROOMS
+      .filter(room => room.label.toLowerCase().includes(query))
+      .sort((a, b) => {
+        const aExact = a.label.toLowerCase() === query;
+        const bExact = b.label.toLowerCase() === query;
+        return aExact === bExact ? 0 : aExact ? -1 : 1;
+      });
+  }, [searchQuery]);
 
   const handleSelectRoomFromSearch = (room: any) => {
     if (isRouteLocked) return;

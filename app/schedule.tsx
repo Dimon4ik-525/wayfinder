@@ -1,7 +1,9 @@
 // 🔥 ДОДАНО Platform
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions, Platform } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+// 🔥 ДОДАНО useCallback
+import { useState, useEffect, useCallback } from 'react';
+// 🔥 ДОДАНО useFocusEffect
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopBar from '../components/TopBar';
 import Substitutions from '../components/Substitutions';
@@ -28,23 +30,26 @@ export default function ScheduleScreen() {
   const [substitutions, setSubstitutions] = useState<any[]>([]);
   const [lessonLayouts, setLessonLayouts] = useState<LessonLayout[]>([]);
 
-  useEffect(() => {
-    const loadSavedGroup = async () => {
-      try {
-        const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
-        await AsyncStorage.removeItem('returnToSchedule');
+  // 🔥 ЗАМІНЕНО НА useFocusEffect
+  useFocusEffect(
+    useCallback(() => {
+      const loadSavedGroup = async () => {
+        try {
+          const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
+          await AsyncStorage.removeItem('returnToSchedule');
 
-        if (shouldKeep === 'true') {
-          const saved = await AsyncStorage.getItem('lastSelectedGroup');
-          if (saved) setSelectedGroup(JSON.parse(saved));
-        } else {
-          await AsyncStorage.removeItem('lastSelectedGroup');
-          setSelectedGroup(null);
-        }
-      } catch (e) {}
-    };
-    loadSavedGroup();
-  }, []);
+          if (shouldKeep === 'true') {
+            const saved = await AsyncStorage.getItem('lastSelectedGroup');
+            if (saved) setSelectedGroup(JSON.parse(saved));
+          } else {
+            await AsyncStorage.removeItem('lastSelectedGroup');
+            setSelectedGroup(null);
+          }
+        } catch (e) {}
+      };
+      loadSavedGroup();
+    }, [])
+  );
 
   const handleSelectGroup = async (group: any) => {
     setSelectedGroup(group);
@@ -54,7 +59,8 @@ export default function ScheduleScreen() {
   };
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 10000);
+    // 🔥 Цей таймер тепер оновлює статус пар (БУЛА/ЗАРАЗ/БУДЕ) лише раз на хвилину!
+    const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -221,14 +227,15 @@ export default function ScheduleScreen() {
               </View>
           ) : (
               <View style={{ position: 'relative', width: '100%' }}>
-                
+
+                {/* 🔥 Більше не передаємо now, TimeIndicator всередині має свій швидкий таймер */}                
                 {isToday && (
-                  <TimeIndicator layouts={lessonLayouts} now={now} />
+                  <TimeIndicator layouts={lessonLayouts} />
                 )}
 
                 {scheduleData.map((lesson, index) => (
                   <View
-                    key={index}
+                    key={`lesson-${lesson.lessonId || index}`} 
                     onLayout={(e) => {
                       const { y, height } = e.nativeEvent.layout;
                       setLessonLayouts(prev => {

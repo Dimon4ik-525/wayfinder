@@ -1,7 +1,9 @@
 // 🔥 ДОДАНО Platform
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions, Platform } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+// 🔥 ДОДАНО useCallback (забрали useEffect)
+import { useState, useCallback } from 'react';
+// 🔥 ДОДАНО useFocusEffect
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../constants/theme';
 import Footer from '../components/Footer';
@@ -14,16 +16,22 @@ export default function SettingsScreen() {
   const [selectedStart, setSelectedStart] = useState('start_main');
   const [isAdmissionMode, setIsAdmissionMode] = useState(false);
 
-  // Завантажуємо збережений вхід при відкритті екрану
-  useEffect(() => {
-    const loadSettings = async () => {
-      const saved = await AsyncStorage.getItem('userStartEntrance');
-      if (saved) setSelectedStart(saved);
-      const admissionSaved = await AsyncStorage.getItem('admissionMode');
-      if (admissionSaved === 'true') setIsAdmissionMode(true);
-    };
-    loadSettings();
-  }, []);
+  // 🔥 Замінено на useFocusEffect для гарантованого оновлення
+  useFocusEffect(
+    useCallback(() => {
+      const loadSettings = async () => {
+        try {
+          const saved = await AsyncStorage.getItem('userStartEntrance');
+          if (saved) setSelectedStart(saved);
+          const admissionSaved = await AsyncStorage.getItem('admissionMode');
+          if (admissionSaved === 'true') setIsAdmissionMode(true);
+        } catch (e) {
+          console.warn("Помилка завантаження налаштувань:", e);
+        }
+      };
+      loadSettings();
+    }, [])
+  );
 
   // Зберігаємо новий вибір
   const handleSelect = async (id: string) => {
@@ -119,7 +127,6 @@ const styles = StyleSheet.create({
   scrollContainer: { 
     flexGrow: 1, 
     paddingHorizontal: '5%', 
-    // paddingTop перенесено в інлайн-стилі вище
   },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 40 },
   headerMobile: { marginBottom: 20 }, 
