@@ -1,71 +1,114 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { useState, createElement } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker'; 
 import { Colors } from '../constants/theme';
 
-// Додаємо типи: тепер TopBar очікує отримати поточну дату і функцію для її зміни
 type TopBarProps = {
   selectedDate: Date;
   onDateChange: (newDate: Date) => void;
 };
 
 export default function TopBar({ selectedDate, onDateChange }: TopBarProps) {
-  
-  // Функція для перемикання днів (+1 або -1 день)
+  const [showPicker, setShowPicker] = useState(false);
+
   const changeDay = (days: number) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + days);
-    onDateChange(newDate); // Відправляємо нову дату на головний екран
+    onDateChange(newDate);
   };
 
-  // Функція для красивого тексту українською
+  const handleDateChange = (event: any, selected?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowPicker(false); 
+    }
+    if (selected) {
+      onDateChange(selected);
+    }
+  };
+
   const formatDate = (date: Date) => {
     const months = ['Січня', 'Лютого', 'Березня', 'Квітня', 'Травня', 'Червня', 'Липня', 'Серпня', 'Вересня', 'Жовтня', 'Листопада', 'Грудня'];
     const days = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', 'П\'ятниця', 'Субота'];
     return `${date.getDate()} ${months[date.getMonth()]}, ${days[date.getDay()]}`;
   };
 
+  // 🔥 РОЗУМНА ФУНКЦІЯ ВИКЛИКУ КАЛЕНДАРЯ
+  const openPicker = () => {
+    if (Platform.OS === 'web') {
+      // Знаходимо наш схований інпут і програмно відкриваємо його
+      const inputEl = document.getElementById('web-date-input');
+      if (inputEl) {
+        try {
+          (inputEl as any).showPicker();
+        } catch (e) {
+          // Якщо браузер дуже старий
+          inputEl.focus(); 
+        }
+      }
+    } else {
+      // Для мобільних телефонів
+      setShowPicker(true);
+    }
+  };
+
   return (
     <View style={styles.topBar}>
-      {/* Вибір групи */}
-      <View style={styles.groupSelector}>
-        <Text style={styles.groupTextLabel}>Група:</Text>
-        <Text style={styles.groupTextValue}>КН-1</Text>
-      </View>
-
-      {/* КАЛЕНДАР (Перемикач дат) */}
+      {/* КАЛЕНДАР */}
       <View style={styles.dateSelector}>
-        {/* Кнопка "Вчора" */}
         <TouchableOpacity onPress={() => changeDay(-1)} style={styles.arrowBtn}>
           <Text style={styles.arrowText}>{"<"}</Text>
         </TouchableOpacity>
 
-        {/* Плашка з датою */}
-        <View style={styles.dateBadge}>
-          <Text style={styles.dateBadgeText}>📅 {formatDate(selectedDate)}</Text>
+        <View style={{ position: 'relative' }}>
+          {/* Кнопка виклику календаря */}
+          <TouchableOpacity onPress={openPicker}>
+            <View style={styles.dateBadge}>
+              <Text style={styles.dateBadgeText}>📅 {formatDate(selectedDate)}</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Схований інпут для Web, який ми викликаємо за ID */}
+          {Platform.OS === 'web' && createElement('input', {
+            id: 'web-date-input',
+            type: 'date',
+            // Коригуємо часовий пояс для правильного відображення в інпуті
+            value: new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0],
+            onChange: (event: any) => {
+              if (event.target.value) onDateChange(new Date(event.target.value));
+            },
+            style: { width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' }
+          })}
         </View>
 
-        {/* Кнопка "Завтра" */}
         <TouchableOpacity onPress={() => changeDay(1)} style={styles.arrowBtn}>
           <Text style={styles.arrowText}>{">"}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Нативний календар для iOS/Android */}
+      {showPicker && Platform.OS !== 'web' && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Додали justifyContent: 'space-between', щоб розкинути Групу і Календар по краях
-  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, justifyContent: 'space-between' },
-  groupSelector: {
-    flexDirection: 'row',
-    backgroundColor: Colors.white,
-    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
-    borderWidth: 1, borderColor: '#E2E8F0',
+  topBar: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'flex-end' // Зміщено праворуч, оскільки група тепер зліва
   },
-  groupTextLabel: { fontSize: 18, color: Colors.textSecondary, marginRight: 8 },
-  groupTextValue: { fontSize: 18, fontWeight: 'bold', color: Colors.textMain },
-  
-  // Стилі для нового календаря
-  dateSelector: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dateSelector: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8 
+  },
   arrowBtn: { 
     backgroundColor: Colors.white, 
     paddingHorizontal: 16, 

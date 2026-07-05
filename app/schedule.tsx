@@ -1,78 +1,304 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useState, useEffect } from 'react'; 
+// 🔥 ДОДАНО Platform
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions, Platform } from 'react-native';
+// 🔥 ДОДАНО useCallback
+import { useState, useEffect, useCallback } from 'react';
+// 🔥 ДОДАНО useFocusEffect
+import { useRouter, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopBar from '../components/TopBar';
 import Substitutions from '../components/Substitutions';
 import ScheduleCard, { ScheduleCardProps } from '../components/ScheduleCard';
+import GroupSelector from '../components/GroupSelector';
+import { fetchSchedule } from '../utils/scheduleApi'; 
 import { Colors } from '../constants/theme';
-
-// Оновлений масив із 6-ма парами
-const MOCK_SCHEDULE: ScheduleCardProps[] = [
-  { lessonNumber: 1, timeStart: '09:00', timeEnd: '10:20', subject: 'Програмування і підтримка вебзастосувань', teacher: 'Попружук О.М.', room: '11', status: 'past' },
-  { lessonNumber: 2, timeStart: '10:30', timeEnd: '11:50', subject: 'Комп\'ютерні мережі та системи', teacher: 'Іванов О.П.', room: '11', status: 'past' },
-  { lessonNumber: 3, timeStart: '12:20', timeEnd: '13:40', subject: 'Рівняння та методи математичної фізики', teacher: 'Сінчук А.М.', room: '1', status: 'past' },
-  { lessonNumber: 4, timeStart: '13:50', timeEnd: '15:10', subject: 'Менеджмент ІТ-проєктів', teacher: 'Петренко В.І.', room: '42', status: 'active' },
-  { lessonNumber: 5, timeStart: '15:20', timeEnd: '16:40', subject: 'Основи кібербезпеки', teacher: 'Коваль Т.М.', room: '18', status: 'upcoming' },
-  { lessonNumber: 6, timeStart: '16:50', timeEnd: '18:10', subject: 'Фізичне виховання', teacher: 'Сидоренко В.В.', room: 'Спортзал', status: 'upcoming' }
-];
+import TimeIndicator, { LessonLayout } from '../components/TimeIndicator';
 
 export default function ScheduleScreen() {
-  // Стан для календаря (обрана дата)
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const router = useRouter();
   
-  // Стан для живого часу
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768; 
+
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  
+  const [scheduleData, setScheduleData] = useState<ScheduleCardProps[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [currentWeek, setCurrentWeek] = useState<string>('');
+  const [substitutions, setSubstitutions] = useState<any[]>([]);
+  const [lessonLayouts, setLessonLayouts] = useState<LessonLayout[]>([]);
+
+  // 🔥 ЗАМІНЕНО НА useFocusEffect
+  useFocusEffect(
+    useCallback(() => {
+      const loadSavedGroup = async () => {
+        try {
+          const shouldKeep = await AsyncStorage.getItem('returnToSchedule');
+          await AsyncStorage.removeItem('returnToSchedule');
+
+          if (shouldKeep === 'true') {
+            const saved = await AsyncStorage.getItem('lastSelectedGroup');
+            if (saved) setSelectedGroup(JSON.parse(saved));
+          } else {
+            await AsyncStorage.removeItem('lastSelectedGroup');
+            setSelectedGroup(null);
+          }
+        } catch (e) {}
+      };
+      loadSavedGroup();
+    }, [])
+  );
+
+  const handleSelectGroup = async (group: any) => {
+    setSelectedGroup(group);
+    try {
+      if (group) await AsyncStorage.setItem('lastSelectedGroup', JSON.stringify(group));
+    } catch (e) {}
+  };
 
   useEffect(() => {
+    // 🔥 Цей таймер тепер оновлює статус пар (БУЛА/ЗАРАЗ/БУДЕ) лише раз на хвилину!
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
-  // Перевірка: чи дивимось ми розклад на сьогодні?
-  const isToday = selectedDate.toDateString() === new Date().toDateString();
-  
-  const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  const getLessonStatus = (timeStart: string, timeEnd: string): 'past' | 'active' | 'upcoming' => {
+    if (!timeStart || !timeEnd || timeStart === '—') return 'past';
 
-  const calculateLineTop = () => {
-    const startHour = 9; // Початок першої пари
-    const PIXELS_PER_HOUR = 78; // Масштаб для компактних карток
+    const isToday = selectedDate.toDateString() === new Date().toDateString();
+    if (!isToday) return selectedDate < new Date() ? 'past' : 'upcoming';
+
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const [startH, startM] = timeStart.split(':').map(Number);
+    const [endH, endM] = timeEnd.split(':').map(Number);
     
-    const totalMinutesPassed = ((now.getHours() - startHour) * 60) + now.getMinutes();
-    const position = (totalMinutesPassed / 60) * PIXELS_PER_HOUR;
-    
-    return Math.max(0, position);
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+
+    if (currentMinutes > endMinutes) return 'past';
+    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) return 'active';
+    return 'upcoming';
   };
+
+  useEffect(() => {
+    const loadSchedule = async () => {
+      if (!selectedGroup) return; 
+      
+      setIsLoading(true);
+      try {
+        const rawData = await fetchSchedule(selectedGroup.id);
+        
+        if (rawData && rawData.schedules && Array.isArray(rawData.schedules)) {
+
+            const weekType = rawData.current_week === 'numerator' ? 'Чисельник' : 
+                             rawData.current_week === 'denominator' ? 'Знаменник' : '';
+            setCurrentWeek(weekType);
+
+            const todayStr = new Date().toDateString();
+            const tomorrowDate = new Date();
+            tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+            const tomorrowStr = tomorrowDate.toDateString();
+            const currentSelectedStr = selectedDate.toDateString();
+
+            if (currentSelectedStr === todayStr && rawData.changes?.today?.items) {
+                setSubstitutions(rawData.changes.today.items);
+            } else if (currentSelectedStr === tomorrowStr && rawData.changes?.tomorrow?.items) {
+                setSubstitutions(rawData.changes.tomorrow.items);
+            } else {
+                setSubstitutions([]); 
+            }
+
+            let selectedDayOfWeek = selectedDate.getDay();
+            if (selectedDayOfWeek === 0) selectedDayOfWeek = 7; 
+
+            const dailyLessonsRaw = rawData.schedules.filter((item: any) => item.day_of_week === selectedDayOfWeek);
+
+            const groupedLessons = new Map<number, any[]>();
+            dailyLessonsRaw.forEach((item: any) => {
+                const id = item.lesson?.id || 99; 
+                if (!groupedLessons.has(id)) groupedLessons.set(id, []);
+                groupedLessons.get(id)!.push(item);
+            });
+
+            const formattedSchedule: ScheduleCardProps[] = [];
+
+            groupedLessons.forEach((lessonsArr, id) => {
+                const baseLesson = lessonsArr[0].lesson;
+
+                const subLessons = lessonsArr.map(l => {
+                    const typeStr = (l.lesson_type || "").toLowerCase();
+                    const isNumerator = typeStr.includes('чисельник');
+                    const isDenominator = typeStr.includes('знаменник');
+                    const extractedSubgroup = (l.lesson_type || "")
+                        .replace(/Звичайна|Чисельник|Знаменник/gi, '')
+                        .trim();
+
+                    return {
+                        subject: l.subject,
+                        teacher: l.teacher || '—',
+                        room: l.cabinet || '—',
+                        subgroup: extractedSubgroup || null,
+                        isNumerator,
+                        isDenominator
+                    };
+                });
+
+                subLessons.sort((a, b) => {
+                    if (a.isNumerator && !b.isNumerator) return -1;
+                    if (!a.isNumerator && b.isNumerator) return 1;
+                    return 0;
+                });
+
+                formattedSchedule.push({
+                    lessonId: id,
+                    lessonNumber: baseLesson?.name || baseLesson?.id || '-', 
+                    timeStart: baseLesson?.starts_at || '—',
+                    timeEnd: baseLesson?.ends_at || '—',
+                    status: getLessonStatus(baseLesson?.starts_at || '', baseLesson?.ends_at || ''),
+                    subLessons: subLessons, 
+                    currentWeekType: weekType
+                });
+            });
+            
+            formattedSchedule.sort((a, b) => (a.lessonId || 99) - (b.lessonId || 99));
+
+            setScheduleData(formattedSchedule);
+        } else {
+            setScheduleData([]);
+            setSubstitutions([]);
+            setCurrentWeek('');
+        }
+      } catch (error) {
+        console.error("Помилка при форматуванні розкладу:", error);
+        setScheduleData([]);
+        setSubstitutions([]);
+      }
+      setLessonLayouts([]);
+      setIsLoading(false);
+    };
+
+    loadSchedule();
+  }, [selectedGroup, selectedDate]); 
+
+  const isToday = selectedDate.toDateString() === new Date().toDateString();
 
   return (
     <View style={styles.container}>
       
-      {/* ПЕРЕДАЄМО ПАРАМЕТРИ В TOPBAR */}
-      <TopBar selectedDate={selectedDate} onDateChange={setSelectedDate} />
-      
-      <Substitutions />
+      {/* 🔥 ОСНОВНИЙ КОНТЕНТ (СКРОЛ). Він рендериться першим, тому лежить під шапкою */}
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ 
+          // 🔥 Якщо браузер — відступ менший (150 замість 180)
+          paddingTop: isMobile ? (Platform.OS === 'web' ? 150 : 180) : 120, 
+          paddingBottom: 140, 
+          paddingHorizontal: isMobile ? 15 : 20 
+        }}
+        style={styles.scrollArea}
+      >
+        
+        {/* Заміни тепер крутяться разом зі скролом */}
+        {substitutions.length > 0 && (
+           <Substitutions data={substitutions} />
+        )}
 
-      <View style={styles.listContainer}>
-        <ScrollView 
-          showsVerticalScrollIndicator={false} 
-          contentContainerStyle={{ paddingBottom: 40, width: '100%' }}
-        >
-          
-          {/* ЛІНІЯ ЧАСУ: показуємо лише для сьогоднішньої дати */}
-          {isToday && (
-            <View style={[styles.redLineContainer, { top: calculateLineTop() }]}>
-              <View style={styles.redBadge}>
-                <Text style={styles.redBadgeText}>{formattedTime}</Text>
+        <View style={styles.listContainer}>
+          {isLoading ? (
+              <View style={styles.centerContainer}>
+                  <ActivityIndicator size="large" color="#3B82F6" />
+                  <Text style={{color: '#64748B', marginTop: 10}}>Завантаження розкладу...</Text>
               </View>
-              <View style={styles.redLine} />
-            </View>
-          )}
+          ) : !selectedGroup ? (
+              <View style={styles.centerContainer}>
+                  <Text style={{
+                    color: '#64748B', 
+                    fontSize: isMobile ? 16 : 20,
+                    fontWeight: '500',
+                    textAlign: 'center',
+                  }}>
+                    ☝️ Щоб побачити розклад - оберіть групу в меню вище
+                  </Text>
+              </View>
+          ) : scheduleData.length === 0 && substitutions.length === 0 ? (
+               <View style={styles.centerContainer}>
+                  <Text style={{color: '#64748B'}}>На цей день пар немає 🎉</Text>
+              </View>
+          ) : (
+              <View style={{ position: 'relative', width: '100%' }}>
 
-          {MOCK_SCHEDULE.map((lesson, index) => (
-            <ScheduleCard 
-              key={index}
-              {...lesson} 
+                {/* 🔥 Більше не передаємо now, TimeIndicator всередині має свій швидкий таймер */}                
+                {isToday && (
+                  <TimeIndicator layouts={lessonLayouts} />
+                )}
+
+                {scheduleData.map((lesson, index) => (
+                  <View
+                    key={`lesson-${lesson.lessonId || index}`} 
+                    onLayout={(e) => {
+                      const { y, height } = e.nativeEvent.layout;
+                      setLessonLayouts(prev => {
+                        const filtered = prev.filter(l => l.lessonId !== lesson.lessonId);
+                        return [...filtered, {
+                          lessonId: lesson.lessonId || index,
+                          y,
+                          height,
+                          timeStart: lesson.timeStart,
+                          timeEnd: lesson.timeEnd,
+                        }];
+                      });
+                    }}
+                  >
+                    <ScheduleCard {...lesson} />
+                  </View>
+                ))}
+              </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* 🔥 АБСОЛЮТНА ШАПКА (ПЛАВАЮЧИЙ ТОП-БАР) */}
+      <View style={[
+        styles.absoluteHeader,
+        {
+          // 🔥 Якщо браузер — відступ менший (20 замість 50)
+          paddingTop: (isMobile && Platform.OS !== 'web') ? 50 : 20,
+          paddingHorizontal: isMobile ? 15 : 20,
+        }
+      ]}>
+        <View style={[
+          styles.headerRow, 
+          { 
+            flexDirection: isMobile ? 'column-reverse' : 'row', 
+            alignItems: isMobile ? 'stretch' : 'center',
+            justifyContent: 'space-between',
+            gap: 15
+          }
+        ]}>
+          
+          <View style={[
+            styles.selectorContainer, 
+            { width: isMobile ? '100%' : 250 }
+          ]}>
+            <GroupSelector 
+              onSelectGroup={handleSelectGroup}
+              currentWeek={currentWeek}
+              value={selectedGroup}
+             />
+          </View>
+          
+          <View style={[
+            styles.topBarContainer, 
+            { alignItems: isMobile ? 'center' : 'flex-end' }
+          ]}>
+            <TopBar 
+              selectedDate={selectedDate} 
+              onDateChange={setSelectedDate} 
             />
-          ))}
-        </ScrollView>
+          </View>
+
+        </View>
       </View>
 
     </View>
@@ -80,40 +306,31 @@ export default function ScheduleScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
-    backgroundColor: Colors.background 
-  },
-  listContainer: { 
-    flex: 1, 
-    marginTop: 20, 
-    position: 'relative',
-    alignItems: 'stretch', 
-  },
-  redLineContainer: {
-    position: 'absolute',
-    left: -10, 
+  container: { flex: 1, backgroundColor: Colors.background },
+  scrollArea: { flex: 1 },
+  
+  // Стилі плаваючої шапки
+  absoluteHeader: {
+    position: 'absolute', 
+    top: 0,
+    left: 0,
     right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 10, 
+    backgroundColor: Colors.background, 
+    zIndex: 100, 
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  redBadge: {
-    backgroundColor: Colors.error,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 100,
-    elevation: 3, 
-  },
-  redBadgeText: { 
-    color: Colors.white, 
-    fontSize: 12, 
-    fontWeight: 'bold' 
-  },
-  redLine: {
-    flex: 1,
-    height: 2, 
-    backgroundColor: Colors.error,
-  },
+
+  headerRow: { zIndex: 100 },
+  selectorContainer: { zIndex: 100 },
+  topBarContainer: { zIndex: 1 },
+
+  listContainer: { flex: 1, position: 'relative', alignItems: 'stretch' },
+  centerContainer: { marginTop: 40, justifyContent: 'center', alignItems: 'center' },
 });
