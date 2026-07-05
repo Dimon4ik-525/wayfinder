@@ -19,11 +19,25 @@ export default function Substitutions({ data }: { data: any[] }) {
 
     const lowerRoom = room.toLowerCase();
     
-    if (lowerRoom.includes('с/к') || lowerRoom.includes('спортзал') || lowerRoom.includes('актова') || lowerRoom.includes('тир')) {
+    // 🔥 Витягуємо перше-ліпше число з назви кабінету (наприклад, "32а" -> 32)
+    const numberMatch = lowerRoom.match(/\d+/);
+    const roomNumber = numberMatch ? parseInt(numberMatch[0], 10) : 0;
+
+    // 🔥 Якщо номер кабінету 31 або більший — це наш невідцифрований корпус
+    const isUnmappedBuilding = roomNumber >= 31;
+    
+    const inDevelopment = [
+      'нувгп', 
+      'тир'
+    ];
+
+    const isUnderConstruction = inDevelopment.some(keyword => lowerRoom.includes(keyword)) || isUnmappedBuilding;
+
+    if (isUnderConstruction) {
       if (Platform.OS === 'web') {
-        window.alert("В розробці 🛠\n\nЦей об'єкт ще не додано на мапу. Працюємо над цим!");
+        window.alert("В розробці 🛠\n\nЦей об'єкт (або корпус) ще не додано на мапу. Працюємо над цим!");
       } else {
-        Alert.alert("В розробці 🛠", "Цей об'єкт ще не додано на мапу. Працюємо над цим!");
+        Alert.alert("В розробці 🛠", "Цей об'єкт (або корпус) ще не додано на мапу. Працюємо над цим!");
       }
       return; 
     }

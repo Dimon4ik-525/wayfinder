@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-// 🔥 ДОДАНО Keyboard, Platform та нові хуки useCallback, useMemo
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, LogBox, ScrollView, useWindowDimensions, Keyboard, Platform } from 'react-native';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,7 +16,6 @@ LogBox.ignoreLogs([
   'useNativeDriver'
 ]);
 
-// 🔥 ОГОРНУТО В ПЕРЕВІРКУ НА ПРОДАКШН
 if (!__DEV__) {
   const originalConsoleError = console.error;
   console.error = (...args) => {
@@ -87,8 +85,8 @@ const ALL_ROOMS = [
 let globalSavedStartId = 'start_main';
 
 const QUICK_LINKS: { label: string; roomId: string; icon?: string }[] = [
-  { label: 'Вхід в укриття 1', roomId: 'shelter_1' },
-  { label: 'Вхід в укриття 2', roomId: 'shelter_2' },
+  { label: 'Вхід в укриття 1', roomId: 'shelter_1', icon: '🛡️' },
+  { label: 'Вхід в укриття 2', roomId: 'shelter_2', icon: '🛡️' },
   { label: 'Директор', roomId: 'director' },
   { label: 'З.д з навч', roomId: 'deputy_1' },
   { label: 'З.д з н-вих/мет', roomId: 'deputy_2' },
@@ -162,16 +160,26 @@ export default function MapScreen() {
     scrollViewRef.current?.scrollTo({ x: scrollX.current + 250, animated: true });
   };
 
-  // 🔥 ЗАМІНЕНО НА useFocusEffect
+  // 🔥 ВИПРАВЛЕННЯ БАГА #1: Розумне скидання стартової точки при фокусі екрана
   useFocusEffect(
     useCallback(() => {
       const loadStartPoint = async () => {
         try {
-          const saved = await AsyncStorage.getItem('userStartEntrance');
-          if (saved) {
+          const saved = await AsyncStorage.getItem('userStartEntrance') || 'start_main';
+          
+          // Якщо прийшли з розкладу, гарантовано скидаємо мапу (очищаємо "сходи" тощо)
+          if (params.fromSchedule === 'true') {
+            setActiveStartId(saved);
+            globalSavedStartId = saved;
+            setRouteHistory([]);
+            setInitialRouteConfig(prev => prev ? { ...prev, startId: saved } : null);
+          } 
+          // Якщо зайшли на вкладку мапи через нижнє меню, і маршрут не активний
+          else if (!targetRoomId) {
             setActiveStartId(saved);
             globalSavedStartId = saved;
           }
+
           const admissionSaved = await AsyncStorage.getItem('admissionMode');
           setIsAdmissionMode(admissionSaved === 'true');
           
@@ -187,27 +195,42 @@ export default function MapScreen() {
         }
       };
       loadStartPoint();
-    }, [params.fromSchedule])
+    }, [params.fromSchedule, targetRoomId])
   );
 
+  // 🔥 ВИПРАВЛЕННЯ БАГА #2: Глибоке очищення маршруту при кліку в розкладі
   useEffect(() => {
-    if (params.room) {
-      const roomParam = params.room as string;
-      const exactMatch = ALL_ROOMS.find(r => r.id === roomParam || r.label.toLowerCase() === roomParam.toLowerCase());
-      const foundRoom = exactMatch || ALL_ROOMS.find(r => r.label.toLowerCase().includes(roomParam.toLowerCase()));
+    const initRouteFromParams = async () => {
+      if (params.room) {
+        const roomParam = params.room as string;
+        const exactMatch = ALL_ROOMS.find(r => r.id === roomParam || r.label.toLowerCase() === roomParam.toLowerCase());
+        const foundRoom = exactMatch || ALL_ROOMS.find(r => r.label.toLowerCase().includes(roomParam.toLowerCase()));
 
-      if (foundRoom) {
-        if (!initialRouteConfig) {
-          setActiveStartId(globalSavedStartId);
-          setInitialRouteConfig({ building: activeBuilding, floor: activeFloor, startId: globalSavedStartId });
+        if (foundRoom) {
+          // Дістаємо справжній вхід з пам'яті
+          const savedStart = await AsyncStorage.getItem('userStartEntrance') || 'start_main';
+          
+          // Примусово оновлюємо стартову точку і очищаємо минулу історію
+          setActiveStartId(savedStart);
+          globalSavedStartId = savedStart;
+          setRouteHistory([]);
+          
+          if (!initialRouteConfig) {
+            setInitialRouteConfig({ building: 1, floor: 1, startId: savedStart });
+          } else {
+            setInitialRouteConfig(prev => prev ? { ...prev, startId: savedStart } : null);
+          }
+
+          setPendingRoom(foundRoom);
+          setTargetRoomId(foundRoom.id);
+          setIsRouteLocked(true);
+        } else {
+          setSearchQuery(roomParam);
         }
-        setPendingRoom(foundRoom);
-        setTargetRoomId(foundRoom.id);
-        setIsRouteLocked(true);
-      } else {
-        setSearchQuery(roomParam);
       }
-    }
+    };
+
+    initRouteFromParams();
   }, [params.room]);
 
   useEffect(() => {
@@ -220,7 +243,6 @@ export default function MapScreen() {
     }
   }, [routeInfo]);
 
-  // 🔥 ОПТИМІЗАЦІЯ ПОШУКУ (useMemo)
   const searchResults = useMemo(() => {
     if (searchQuery.trim() === '') return [];
     
@@ -532,7 +554,6 @@ export default function MapScreen() {
 
   return (
     <View style={[styles.container, { 
-      // 🔥 ДЛЯ ВЕБ БРАУЗЕРА ВІДСТУП МЕНШИЙ (20), ДЛЯ ДОДАТКА ВЕЛИКИЙ (50)
       paddingTop: (isMobile && Platform.OS !== 'web') ? 50 : 20, 
       paddingHorizontal: isMobile ? 15 : 20,
       paddingBottom: isMobile ? 100 : 20
