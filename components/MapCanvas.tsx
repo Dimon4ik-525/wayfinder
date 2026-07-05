@@ -6,7 +6,8 @@ import { ReactNativeZoomableView } from '@openspacelabs/react-native-zoomable-vi
 
 export interface MapCanvasProps {
   rooms: any[];
-  startPoints?: { id: string; label?: string; x: number; y: number }[];
+  // 🔥 Додали fontSize та lineHeight для стартових точок
+  startPoints?: { id: string; label?: string; x: number; y: number; fontSize?: number; lineHeight?: number; textY?: number }[];
   activeStartId?: string;
   viewBox: string;
   wallsPath: string;
@@ -78,10 +79,9 @@ export default function MapCanvas({
         ref={zoomRef}
         maxZoom={4}
         minZoom={1} 
-        zoomStep={0.5} // Додали крок
+        zoomStep={0.5} 
         initialZoom={1}
         bindToBorders={true}
-        // 🔥 Ці пропси допомагають уникнути "мильної" растрової трансформації SVG
         disablePanOnInitialZoom={true}
         visualTouchFeedbackEnabled={false}
         style={styles.zoomableView}
@@ -237,7 +237,7 @@ export default function MapCanvas({
             <Path d={routePath} stroke={Colors.primary} strokeWidth="24" strokeDasharray="40, 30" fill="none" strokeLinejoin="round" />
           )}
 
-          {/* СТАРТОВІ ТОЧКИ */}
+          {/* 🔥 ОНОВЛЕНІ СТАРТОВІ ТОЧКИ */}
           {startPoints.map((sp) => {
             const isActive = sp.id === activeStartId;
             const fillColor = isActive ? Colors.error : Colors.primary;
@@ -249,8 +249,14 @@ export default function MapCanvas({
             const hitboxRadius = isTerritory ? "300" : "120";
             const haloRadius = isTerritory ? "200" : "80";
             const coreRadius = isTerritory ? "80" : "30";
-            const textY = isTerritory ? "280" : "100";
-            const textSize = isTerritory ? 180 : 42;
+            const textY = sp.textY !== undefined ? sp.textY : (isTerritory ? 280 : 100);
+            
+            // 🔥 Беремо кастомний розмір, якщо він вказаний, інакше стандартний
+            const textSize = sp.fontSize ? sp.fontSize : (isTerritory ? 180 : 42);
+            const lineHeight = sp.lineHeight ? sp.lineHeight : (textSize * 1.3);
+
+            // 🔥 Розрізаємо текст на рядки
+            const lines = (isActive ? 'ВИ ТУТ' : inactiveText).split('\n');
 
             return (
               <G
@@ -262,8 +268,14 @@ export default function MapCanvas({
                 <Circle cx="0" cy="0" r={hitboxRadius} fill={fillColor} opacity={0} />
                 <Circle cx="0" cy="0" r={haloRadius} fill={fillColor} opacity={isActive ? 0.2 : 0.1} />
                 <Circle cx="0" cy="0" r={coreRadius} fill={fillColor} />
+                
+                {/* 🔥 Кожен рядок виводиться через TSpan */}
                 <SvgText x="0" y={textY} fill={fillColor} fontSize={textSize} fontWeight="bold" textAnchor="middle">
-                  {isActive ? 'ВИ ТУТ' : inactiveText}
+                  {lines.map((line: string, index: number) => (
+                    <TSpan key={index} x="0" dy={index === 0 ? 0 : lineHeight}>
+                      {line}
+                    </TSpan>
+                  ))}
                 </SvgText>
               </G>
             );

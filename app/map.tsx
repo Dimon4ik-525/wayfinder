@@ -87,6 +87,8 @@ const ALL_ROOMS = [
 let globalSavedStartId = 'start_main';
 
 const QUICK_LINKS: { label: string; roomId: string; icon?: string }[] = [
+  { label: 'Вхід в укриття 1', roomId: 'shelter_1' },
+  { label: 'Вхід в укриття 2', roomId: 'shelter_2' },
   { label: 'Директор', roomId: 'director' },
   { label: 'З.д з навч', roomId: 'deputy_1' },
   { label: 'З.д з н-вих/мет', roomId: 'deputy_2' },
